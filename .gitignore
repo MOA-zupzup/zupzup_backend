@@ -189,4 +189,5 @@ gradle-app.setting
 
 # End of https://www.toptal.com/developers/gitignore/api/java,intellij+all,gradle,windows,visualstudiocode
 
+# 민감한 정보가 담겨있음
 application-private.properties
