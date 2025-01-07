@@ -355,3 +355,5 @@ gradle-app.setting
 
 # End of https://www.toptal.com/developers/gitignore/api/gradle,maven,windows,macos,git,java,intellij,netbeans,eclipse,visualstudiocode
 
+# Firebase Admin SDK JSON 파일
+zupzup/zupzup/src/main/resources/zupzup-e3e05-firebase-adminsdk-1ujhj-e32eea045d.json
