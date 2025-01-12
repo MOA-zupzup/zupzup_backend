@@ -1,4 +1,4 @@
-package com.MOA.zupzup.config;
+package com.MOA.zupzup.login;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
