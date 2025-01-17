@@ -26,10 +26,10 @@ public class Member {
     private String email;
 
     @Column(name = "coin")
-    private Integer coin;
+    private Integer coin = 0;
 
     @Column(name = "phase")
-    private Integer phase;
+    private Integer phase = 1;
 
     @Builder
     public Member(String userId, String password, String nickname, String email, Integer coin, Integer phase) {
@@ -37,13 +37,13 @@ public class Member {
         this.password = password;
         this.nickname = nickname;
         this.email = email;
-        this.coin = coin;
-        this.phase = 1;
+        this.coin = coin != null ? coin : 0;
+        this.phase = phase != null ? phase : 1;
     }
 
     // 코인 증가 메서드
-    public void addCoin(int amounnt) {
-        this.coin += amounnt;
+    public void addCoin(int amount) {
+        this.coin += amount;
     }
 
     // 페이즈 업데이트 메서드
