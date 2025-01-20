@@ -10,11 +10,6 @@ public class ZupzupApplication {
 
     public static void main(String[] args) {
         ApplicationContext context = SpringApplication.run(ZupzupApplication.class, args);
-        FirebaseConfig firebaseConfig = context.getBean(FirebaseConfig.class);
-        try {
-            firebaseConfig.initializeFirebase();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
     }
 }

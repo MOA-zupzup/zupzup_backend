@@ -22,3 +22,7 @@ kakao:
   client_id: d115fcb7994a5c6d3e52002c84100e53
   client_secret: XaocJvied3L4Jl0XuFZ5AzwJpNNcnxZu
   redirect_uri: "http://localhost:8080/login/oauth2/code/kakao"
+
+firebase:
+  service-account:
+    path: ${FIREBASE_SERVICE}
