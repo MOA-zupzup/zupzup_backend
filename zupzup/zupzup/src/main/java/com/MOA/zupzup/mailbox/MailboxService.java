@@ -1,4 +1,4 @@
-package com.MOA.zupzup.service;
+package com.MOA.zupzup.mailbox;
 
 import com.MOA.zupzup.mailbox.Mailbox;
 import com.MOA.zupzup.mailbox.MailboxRepository;
