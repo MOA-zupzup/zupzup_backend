@@ -14,12 +14,20 @@ import java.io.IOException;
 
 @Configuration
 public class FirebaseConfig {
+
+    @Value("${firebase.service-account.path}")
+    private String firebaseServiceAccountPath;
+
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
+        // FIREBASE_SERVICE_ACCOUNT_PATH 유무 확인
+        if (firebaseServiceAccountPath == null || firebaseServiceAccountPath.isEmpty()) {
+            throw new IOException("Firebase service account path not configured in application.yml");
+        }
         // firebase 중복실행 방지 조건문
         if (FirebaseApp.getApps().isEmpty()) {
             FileInputStream serviceAccount =
-                    new FileInputStream("src/main/resources/zupzup-e3e05-firebase-adminsdk-1ujhj-725b926874.json");
+                    new FileInputStream(firebaseServiceAccountPath);
 
             FirebaseOptions options = new FirebaseOptions.Builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
