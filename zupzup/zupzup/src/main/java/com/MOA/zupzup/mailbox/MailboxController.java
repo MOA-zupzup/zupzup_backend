@@ -1,33 +1,26 @@
 package com.MOA.zupzup.mailbox;
 
+import com.MOA.zupzup.mailbox.Mailbox;
 import com.MOA.zupzup.mailbox.MailboxService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 @RestController
-@RequestMapping("/api/mailbox")
 public class MailboxController {
 
-    @Autowired
-    private MailboxService mailboxService;
+    private final MailboxService mailboxService;
 
-    @GetMapping("/nearby")
-    public List<Mailbox> getMailboxesNearby(@RequestParam double latitude,
-                                            @RequestParam double longitude,
-                                            @RequestParam double searchRadius){
-        return mailboxService.getMailboxesNearby(latitude, longitude, searchRadius);
+    public MailboxController(MailboxService mailboxService) {
+        this.mailboxService = mailboxService;
     }
 
-    @PostMapping("/{mailboxId}/letters")
-    public void addLetterToMailbox(@PathVariable Long mailboxId,
-                                   @RequestParam Long letterId) {
-        mailboxService.addLetterToMailbox(mailboxId, letterId);
-    }
-
-    @GetMapping("/{mailboxId}/letters")
-    public List<Long> getLettersInMailbox(@PathVariable Long mailboxId) {
-        return mailboxService.getLettersInMailbox(mailboxId);
+    @GetMapping("/getFirestoredMailboxes")
+    public List<Mailbox> getFirestoredMailboxes() throws ExecutionException, InterruptedException {
+        return mailboxService.getFirestoredMailboxes();
     }
 }

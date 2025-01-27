@@ -2,25 +2,32 @@ package com.MOA.zupzup.mailbox;
 
 import com.MOA.zupzup.mailbox.Mailbox;
 import com.MOA.zupzup.mailbox.MailboxRepository;
+import com.MOA.zupzup.mailbox.FirestoreService;
+import com.google.cloud.firestore.GeoPoint;
+import com.google.cloud.firestore.QueryDocumentSnapshot;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Service
 public class MailboxService {
 
     private final MailboxRepository mailboxRepository;
+    private final FirestoreService firestoreService;
 
-    public MailboxService(MailboxRepository mailboxRepository) {
+    public MailboxService(MailboxRepository mailboxRepository, FirestoreService firestoreService) {
         this.mailboxRepository = mailboxRepository;
+        this.firestoreService = firestoreService;
     }
 
-    public List<Mailbox> getMailboxesNearby(double latitude, double longitude) {
+    public List<Mailbox> getMailboxesNearby(double latitude, double longitude, double searchRadius) {
         List<Mailbox> allMailboxes = mailboxRepository.findAll();
-
         return allMailboxes.stream()
-                .filter(mailbox -> calculateDistance(latitude, longitude, mailbox.getCenterLatitude(), mailbox.getCenterLongitude()) <= mailbox.getRadius())
+                .filter(mailbox -> calculateDistance(latitude, longitude, mailbox.getCenterLatitude(), mailbox.getCenterLongitude()) <= searchRadius)
                 .collect(Collectors.toList());
     }
 
@@ -39,6 +46,26 @@ public class MailboxService {
         Mailbox mailbox = mailboxRepository.findById(mailboxId).orElseThrow(() -> new IllegalArgumentException("Mailbox not found"));
         mailbox.getLetterIds().add(letterId);
         mailboxRepository.save(mailbox);
+
+        // Firestore에 편지 추가
+        try {
+            Map<String, Object> mailboxData = new HashMap<>();
+            mailboxData.put("id", mailbox.getId());
+            mailboxData.put("location", new GeoPoint(mailbox.getCenterLatitude(), mailbox.getCenterLongitude()));
+            mailboxData.put("radius", mailbox.getRadius());
+            mailboxData.put("letterIds", mailbox.getLetterIds());
+            firestoreService.addDocument("mailboxes", mailboxId.toString(), mailboxData);
+        } catch (Exception e) {
+            // 예외 처리
+            e.printStackTrace();
+        }
+    }
+
+    public List<Mailbox> getFirestoredMailboxes() throws ExecutionException, InterruptedException {
+        List<QueryDocumentSnapshot> documents = firestoreService.getDocuments("mailboxes");
+        return documents.stream()
+                .map(doc -> doc.toObject(Mailbox.class))
+                .collect(Collectors.toList());
     }
 
     public List<Long> getLettersInMailbox(Long mailboxId) {
