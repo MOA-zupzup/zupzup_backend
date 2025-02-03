@@ -2,10 +2,8 @@ package com.MOA.zupzup.mailbox;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.GeoPoint;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.firestore.QuerySnapshot;
-import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,8 +14,8 @@ public class FirestoreService {
 
     private final Firestore firestore;
 
-    public FirestoreService() {
-        this.firestore = FirestoreClient.getFirestore();
+    public FirestoreService(Firestore firestore) {
+        this.firestore = firestore;
     }
 
     public void addDocument(String collectionName, String documentId, Object data) {

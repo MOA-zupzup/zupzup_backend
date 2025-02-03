@@ -1,8 +1,5 @@
 package com.MOA.zupzup.mailbox;
 
-import com.MOA.zupzup.mailbox.Mailbox;
-import com.MOA.zupzup.mailbox.MailboxRepository;
-import com.MOA.zupzup.mailbox.FirestoreService;
 import com.google.cloud.firestore.GeoPoint;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import org.springframework.stereotype.Service;
@@ -61,7 +58,7 @@ public class MailboxService {
         }
     }
 
-    public List<Mailbox> getFirestoredMailboxes() throws ExecutionException, InterruptedException {
+    public List<Mailbox> getMailboxes() throws ExecutionException, InterruptedException {
         List<QueryDocumentSnapshot> documents = firestoreService.getDocuments("mailboxes");
         return documents.stream()
                 .map(doc -> doc.toObject(Mailbox.class))

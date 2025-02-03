@@ -1,6 +1,8 @@
 package com.MOA.zupzup.login;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.firestore.Firestore;
+import com.google.firebase.cloud.FirestoreClient;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
@@ -18,7 +20,7 @@ public class FirebaseConfig {
     @Value("${firebase.service-account.path}")
     private String firebaseServiceAccountPath;
 
-    @Bean
+    @PostConstruct
     public FirebaseApp firebaseApp() throws IOException {
         // FIREBASE_SERVICE_ACCOUNT_PATH 유무 확인
         if (firebaseServiceAccountPath == null || firebaseServiceAccountPath.isEmpty()) {
@@ -42,5 +44,10 @@ public class FirebaseConfig {
     @Bean
     public FirebaseAuth firebaseAuth() throws IOException {
         return FirebaseAuth.getInstance(firebaseApp());
+    }
+
+    @Bean
+    public Firestore firestore(){
+        return FirestoreClient.getFirestore();
     }
 }
