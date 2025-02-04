@@ -1,6 +1,8 @@
 package com.MOA.zupzup.login;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
@@ -31,6 +33,7 @@ public class FirebaseConfig {
 
             FirebaseOptions options = new FirebaseOptions.Builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .setStorageBucket("${firebase.firebase-bucket}")
                     .build();
 
             return FirebaseApp.initializeApp(options);
@@ -42,5 +45,10 @@ public class FirebaseConfig {
     @Bean
     public FirebaseAuth firebaseAuth() throws IOException {
         return FirebaseAuth.getInstance(firebaseApp());
+    }
+
+    @Bean
+    public Storage storage() {
+        return StorageOptions.getDefaultInstance().getService();
     }
 }
