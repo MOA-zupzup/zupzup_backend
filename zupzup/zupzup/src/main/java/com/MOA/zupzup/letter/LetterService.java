@@ -1,7 +1,8 @@
 package com.MOA.zupzup.letter;
 
-import com.MOA.zupzup.common.FirebaseService;
-import com.MOA.zupzup.letter.dto.LetterRequest;
+import com.MOA.zupzup.exception.ErrorCode;
+import com.MOA.zupzup.exception.LetterException;
+import com.MOA.zupzup.letter.dto.DroppingLetterRequest;
 import com.MOA.zupzup.letter.dto.LetterResponse;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
@@ -9,11 +10,17 @@ import com.google.firebase.cloud.FirestoreClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
+
 public class LetterService {
 
     private static final String COLLECTION_NAME = "letters";
@@ -23,95 +30,118 @@ public class LetterService {
         return db.collection(COLLECTION_NAME);
     }
 
-    public String createUnpickedLetter(LetterRequest request){
-        Letter letter = Letter.dropLetter(request);
+
+    public String createUnpickedLetter(DroppingLetterRequest request){
+        Letter letter = request.toDropLetterEntity();
         return createLetter(letter);
     }
 
-    public LetterResponse findLetter(String id)  {
-        Letter letter = findLetterById(id);
+    public LetterResponse findLetter(String letterId)  {
+        Letter letter = findLetterById(letterId);
         return LetterResponse.from(letter);
     }
 
-    private String createLetter(Letter letter) {
-
-        DocumentReference docRef = getLetterCollection().document();
-        letter.setId(docRef.getId());
-        ApiFuture<WriteResult> letterApiFuture = docRef.set(letter);
-
-        try {
-            letterApiFuture.get();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-        return docRef.getId();
+    public List<LetterResponse> findAllLettersByMemberId(String memberId) {
+        List<Letter> letters = findLettersByMemberId(memberId);
+        return letters.stream().map(LetterResponse::from).toList();
     }
 
-    private Letter findLetterById (String id) {
-        DocumentReference docRef = getLetterCollection().document(id);
-        ApiFuture<DocumentSnapshot> future = docRef.get();
+    public void pickUpLetter(String letterId, String receiverId) {
+        Letter letter = findLetterById(letterId);
+        letter.pickUp(receiverId);
+        updateLetter(letter);
+    }
 
+    public void deleteLetter(String letterId) {
+        findLetterById(letterId);
+        deleteLetterById(letterId);
+    }
+
+
+    //=== firestore CRUD 메서드 ===//
+    private String createLetter(Letter letter) {
         try {
+            DocumentReference docRef = getLetterCollection().document();
+            letter.setId(docRef.getId());
+            ApiFuture<WriteResult> letterApiFuture = docRef.set(letter);
+            letterApiFuture.get();
+            return docRef.getId();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new LetterException(ErrorCode.LETTER_CREATE_FAILED);
+        }
+    }
+
+    private Letter findLetterById(String id) {
+        try {
+            DocumentReference docRef = getLetterCollection().document(id);
+            ApiFuture<DocumentSnapshot> future = docRef.get();
             DocumentSnapshot document = future.get();
-            return document.exists() ? document.toObject(Letter.class) : null;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // 현재 스레드의 인터럽트 상태 유지
-            throw new RuntimeException("Firestore에서 편지를 조회하는 도중 인터럽트 발생", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Firestore에서 편지를 조회하는 도중 오류 발생", e);
+            return handleFirestoreResult(document, () -> new LetterException(ErrorCode.LETTTER_NOT_FOUND));
+        } catch (InterruptedException | ExecutionException e) {
+            throw new LetterException(ErrorCode.LETTER_FIND_FAILED);
         }
     }
 
     private List<QueryDocumentSnapshot> findAllLetters() {
-        ApiFuture<QuerySnapshot> future = getLetterCollection().get();
-        QuerySnapshot querySnapshot = null;
         try {
-            querySnapshot = future.get();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-        return querySnapshot.getDocuments();
-    }
-
-    private void updateLetter(String id, Letter letter) {
-        DocumentReference docRef = getLetterCollection().document(id);
-        ApiFuture<com.google.cloud.firestore.WriteResult> future = docRef.set(letter);
-        try {
-            future.get();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
+            ApiFuture<QuerySnapshot> future = getLetterCollection().get();
+            QuerySnapshot querySnapshot = future.get();
+            return querySnapshot.getDocuments();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new LetterException(ErrorCode.LETTER_FIND_FAILED);
         }
     }
 
-    private void deleteLetter(String id) {
-        DocumentReference docRef = getLetterCollection().document(id);
-        ApiFuture<com.google.cloud.firestore.WriteResult> writeResult = docRef.delete();
+    public List<Letter> findLettersByMemberId(String memberId) {
         try {
-            writeResult.get();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
+            ApiFuture<QuerySnapshot> queryReceiver = getLetterCollection()
+                    .whereEqualTo("receiverId", memberId)
+                    .get();
+            ApiFuture<QuerySnapshot> querySender = getLetterCollection()
+                    .whereEqualTo("senderId", memberId)
+                    .get();
+
+            List<QueryDocumentSnapshot> receiverDocs = queryReceiver.get().getDocuments();
+            List<QueryDocumentSnapshot> senderDocs = querySender.get().getDocuments();
+
+            Set<Letter> letterSet = Stream.concat(receiverDocs.stream(), senderDocs.stream())
+                    .map(doc -> doc.toObject(Letter.class))
+                    .filter(letter -> letter != null)
+                    .collect(Collectors.toSet());
+
+            return new ArrayList<>(letterSet);
+        } catch (InterruptedException | ExecutionException e) {
+            throw new LetterException(ErrorCode.FAIL_TO_FIND_MY_LETTERS);
         }
     }
 
-/*
-    private final FirebaseService<Letter> firebaseService;
-
-    public void createUnpickedLetter(LetterRequest request){
-        Letter letter = Letter.dropLetter(request);
-        firebaseService.create(COLLECTION_NAME, letter.getId(), letter);
+    private void updateLetter(Letter letter) {
+        try {
+            String id = letter.getId();
+            DocumentReference docRef = getLetterCollection().document(letter.getId());
+            ApiFuture<WriteResult> result = docRef.set(letter);
+            result.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new LetterException(ErrorCode.LETTER_UPDATE_FAILED);
+        }
     }
 
-    public LetterResponse findLetter(String id){
-        Letter letter = firebaseService.findById(COLLECTION_NAME, id, Letter.class);
-        return LetterResponse.from(letter);
+    private void deleteLetterById(String id) {
+        try {
+            DocumentReference docRef = getLetterCollection().document(id);
+            ApiFuture<WriteResult> result = docRef.delete();
+            result.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new LetterException(ErrorCode.LETTER_DELETE_FAILED);
+        }
     }
-*/
+
+    //=== 검증 메서드===//
+    private Letter handleFirestoreResult(DocumentSnapshot documentSnapshot, Supplier<? extends RuntimeException> supplier){
+        return documentSnapshot.exists() ? documentSnapshot.toObject(Letter.class) : throwException(supplier);
+    }
+
+    private <T> T throwException(Supplier<? extends RuntimeException> exceptionSupplier) {
+        throw exceptionSupplier.get();
+    }
 }

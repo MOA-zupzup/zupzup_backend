@@ -10,7 +10,8 @@ public record LetterResponse(
         Timestamp createdAt,
         String pictureUrl,
         String paperUrl,
-        String senderId
+        String senderId,
+        String receiverId
 ) {
     public static LetterResponse from(Letter letter){
         return new LetterResponse(
@@ -20,7 +21,8 @@ public record LetterResponse(
                 letter.getCreatedAt(),
                 letter.getPictureUrl(),
                 letter.getPaperUrl(),
-                letter.getSenderId()
+                letter.getSenderId(),
+                letter.getReceiverId()
         );
     }
 }

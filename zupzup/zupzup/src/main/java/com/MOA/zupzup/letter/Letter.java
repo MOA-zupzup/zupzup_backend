@@ -1,16 +1,13 @@
 package com.MOA.zupzup.letter;
 
-import com.MOA.zupzup.letter.dto.LetterRequest;
+import com.MOA.zupzup.letter.vo.LetterStatus;
 import com.google.cloud.Timestamp;
-import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.GeoPoint;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.data.annotation.CreatedDate;
+import lombok.*;
 
 @Getter
-@Setter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Letter {
     private String id;
     private String title; // 편지 제목
@@ -23,15 +20,25 @@ public class Letter {
     private String senderId; // 남긴 사람
     private String receiverId; // 받은 사람
 
-    public static Letter dropLetter(LetterRequest request){
-        Letter letter = new Letter();
-        letter.setTitle(request.title());
-        letter.setContent(request.content());
-        letter.setLocation(request.location());
-        letter.setCreatedAt(request.createdAt());
-        letter.setPictureUrl(request.pictureUrl());
-        letter.setPaperUrl(request.paperUrl());
-        letter.setSenderId(request.senderId());
-        return letter;
+    public Letter(String id, String title, String content, GeoPoint location, Timestamp createdAt, String status, String pictureUrl, String paperUrl, String senderId, String receiverId) {
+        this.id = id;
+        this.title = title;
+        this.content = content;
+        this.location = location;
+        this.createdAt = createdAt;
+        this.status = status;
+        this.pictureUrl = pictureUrl;
+        this.paperUrl = paperUrl;
+        this.senderId = senderId;
+        this.receiverId = receiverId;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void pickUp(String receiverId) {
+        this.status = LetterStatus.WRITTEN.toString();
+        this.receiverId = receiverId;
     }
 }
