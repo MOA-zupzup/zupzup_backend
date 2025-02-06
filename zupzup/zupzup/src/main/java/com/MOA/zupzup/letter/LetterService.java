@@ -25,16 +25,15 @@ public class LetterService {
 
     public String createUnpickedLetter(LetterRequest request){
         Letter letter = Letter.dropLetter(request);
-        createLetter(letter);
-        return letter.getId();
+        return createLetter(letter);
     }
 
-    public LetterResponse findLetter(String id){
+    public LetterResponse findLetter(String id)  {
         Letter letter = findLetterById(id);
         return LetterResponse.from(letter);
     }
 
-    public String createLetter(Letter letter) {
+    private String createLetter(Letter letter) {
 
         DocumentReference docRef = getLetterCollection().document();
         letter.setId(docRef.getId());
@@ -50,27 +49,22 @@ public class LetterService {
         return docRef.getId();
     }
 
-    public Letter findLetterById (String id) {
-        DocumentReference docRef = getLetterCollection().document();
+    private Letter findLetterById (String id) {
+        DocumentReference docRef = getLetterCollection().document(id);
         ApiFuture<DocumentSnapshot> future = docRef.get();
-        DocumentSnapshot document = null;
 
         try {
-            document = future.get();
+            DocumentSnapshot document = future.get();
+            return document.exists() ? document.toObject(Letter.class) : null;
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt(); // 현재 스레드의 인터럽트 상태 유지
+            throw new RuntimeException("Firestore에서 편지를 조회하는 도중 인터럽트 발생", e);
         } catch (ExecutionException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Firestore에서 편지를 조회하는 도중 오류 발생", e);
         }
-
-        if(document.exists()) {
-            return document.toObject(Letter.class);
-        }
-
-        return null;
     }
 
-    public List<QueryDocumentSnapshot> findAllLetters() {
+    private List<QueryDocumentSnapshot> findAllLetters() {
         ApiFuture<QuerySnapshot> future = getLetterCollection().get();
         QuerySnapshot querySnapshot = null;
         try {
@@ -83,7 +77,7 @@ public class LetterService {
         return querySnapshot.getDocuments();
     }
 
-    public void updateLetter(String id, Letter letter) {
+    private void updateLetter(String id, Letter letter) {
         DocumentReference docRef = getLetterCollection().document(id);
         ApiFuture<com.google.cloud.firestore.WriteResult> future = docRef.set(letter);
         try {
@@ -95,7 +89,7 @@ public class LetterService {
         }
     }
 
-    public void deleteLetter(String id) {
+    private void deleteLetter(String id) {
         DocumentReference docRef = getLetterCollection().document(id);
         ApiFuture<com.google.cloud.firestore.WriteResult> writeResult = docRef.delete();
         try {

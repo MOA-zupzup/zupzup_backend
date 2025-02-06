@@ -25,4 +25,4 @@ kakao:
 
   firebase:
     service-account:
-      path: "${FIREBASE_SERVICE_ACCOUNT_PATH}"
+      path: "src/main/resources/zupzup-e3e05-firebase-adminsdk-1ujhj-725b926874.json"
