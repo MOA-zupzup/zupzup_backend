@@ -24,7 +24,7 @@ public class LetterController {
     }
 
     // 편지 줍기
-    @PutMapping("/pick/{letterId}")
+    @PutMapping("/{letterId}/pick")
     public ResponseEntity<Void> pickUpLetter(@PathVariable String letterId, @RequestParam String receiverId){
         letterService.pickUpLetter(letterId, receiverId);
         return ResponseEntity.ok().build();
