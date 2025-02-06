@@ -2,6 +2,7 @@ package com.MOA.zupzup.mailbox;
 
 import com.google.cloud.firestore.GeoPoint;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -16,6 +17,7 @@ public class MailboxService {
     private final MailboxRepository mailboxRepository;
     private final FirestoreService firestoreService;
 
+    @Autowired
     public MailboxService(MailboxRepository mailboxRepository, FirestoreService firestoreService) {
         this.mailboxRepository = mailboxRepository;
         this.firestoreService = firestoreService;
@@ -44,29 +46,23 @@ public class MailboxService {
         mailbox.getLetterIds().add(letterId);
         mailboxRepository.save(mailbox);
 
-        // Firestore에 편지 추가
-        try {
-            Map<String, Object> mailboxData = new HashMap<>();
-            mailboxData.put("id", mailbox.getId());
-            mailboxData.put("location", new GeoPoint(mailbox.getCenterLatitude(), mailbox.getCenterLongitude()));
-            mailboxData.put("radius", mailbox.getRadius());
-            mailboxData.put("letterIds", mailbox.getLetterIds());
-            firestoreService.addDocument("mailboxes", mailboxId.toString(), mailboxData);
-        } catch (Exception e) {
-            // 예외 처리
-            e.printStackTrace();
-        }
+        // Firestore에 데이터 추가
+        Map<String, Object> data = firestoreService.convertMailboxToFirestoreData(mailbox);
+        firestoreService.addDocument("mailboxes", mailboxId.toString(), data);
     }
 
-    public List<Mailbox> getMailboxes() throws ExecutionException, InterruptedException {
+    public List<Mailbox> getMailboxes() {
+        // Firestore에서 데이터를 조회하는 방법
         List<QueryDocumentSnapshot> documents = firestoreService.getDocuments("mailboxes");
         return documents.stream()
-                .map(doc -> doc.toObject(Mailbox.class))
+                .map(doc -> {
+                    // Firestore 문서 ID를 가져와서 Mailbox 객체에 설정
+                    Mailbox mailbox = doc.toObject(Mailbox.class);
+                    mailbox.setFirestoreId(doc.getId()); // firestoreId에 문서 ID 설정
+                    // Firestore 문서 ID를 Long으로 변환하여 id 필드에 설정
+                    mailbox.setId(Long.valueOf(doc.getId()));
+                    return mailbox;
+                })
                 .collect(Collectors.toList());
-    }
-
-    public List<Long> getLettersInMailbox(Long mailboxId) {
-        Mailbox mailbox = mailboxRepository.findById(mailboxId).orElseThrow(() -> new IllegalArgumentException("Mailbox not found"));
-        return mailbox.getLetterIds();
     }
 }

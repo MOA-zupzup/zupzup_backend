@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import jakarta.persistence.*;
+
 import java.util.List;
 
 @Entity
@@ -29,7 +30,22 @@ public class Mailbox {
     @ElementCollection
     private List<Long> letterIds;
 
+    private String firestoreId;
+
     public GeoPoint getLocation(){
         return new GeoPoint(centerLatitude, centerLongitude);
+    }
+
+    public void setLocation(GeoPoint location){
+        this.centerLatitude=location.getLatitude();
+        this.centerLongitude=location.getLongitude();
+    }
+
+    public void setFirestoreId(String firestoreId){
+        this.firestoreId=firestoreId;
+    }
+
+    public Long getFirestoreIdAsLong(){
+        return firestoreId != null ? Long.valueOf(firestoreId):null;
     }
 }
