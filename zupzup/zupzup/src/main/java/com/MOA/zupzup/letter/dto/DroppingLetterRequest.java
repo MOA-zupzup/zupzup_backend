@@ -6,7 +6,6 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.GeoPoint;
 
 public record DroppingLetterRequest(
-        String id,
         String title,
         String content,
         GeoPoint location,

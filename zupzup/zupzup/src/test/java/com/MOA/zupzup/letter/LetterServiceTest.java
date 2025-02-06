@@ -23,7 +23,6 @@ public class LetterServiceTest {
 
     private DroppingLetterRequest createLetterRequest(){
         DroppingLetterRequest request = new DroppingLetterRequest(
-                "testId",
                 "testTitle",
                 "testContent",
                 new GeoPoint(37,126),
