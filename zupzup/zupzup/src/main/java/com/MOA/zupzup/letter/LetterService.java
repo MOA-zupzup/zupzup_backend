@@ -9,6 +9,7 @@ import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +20,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
-
 public class LetterService {
 
     private static final String COLLECTION_NAME = "letters";
@@ -30,7 +31,7 @@ public class LetterService {
         return db.collection(COLLECTION_NAME);
     }
 
-
+    @Transactional
     public String createUnpickedLetter(DroppingLetterRequest request){
         Letter letter = request.toDropLetterEntity();
         return createLetter(letter);
@@ -46,12 +47,14 @@ public class LetterService {
         return letters.stream().map(LetterResponse::from).toList();
     }
 
+    @Transactional
     public void pickUpLetter(String letterId, String receiverId) {
         Letter letter = findLetterById(letterId);
         letter.pickUp(receiverId);
         updateLetter(letter);
     }
 
+    @Transactional
     public void deleteLetter(String letterId) {
         findLetterById(letterId);
         deleteLetterById(letterId);
