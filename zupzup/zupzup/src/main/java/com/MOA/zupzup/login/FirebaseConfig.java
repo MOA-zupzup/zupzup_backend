@@ -1,16 +1,17 @@
 package com.MOA.zupzup.login;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.firestore.Firestore;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.io.FileInputStream;
 import java.io.IOException;
 
@@ -20,20 +21,20 @@ public class FirebaseConfig {
     @Value("${firebase.service-account.path}")
     private String firebaseServiceAccountPath;
 
+    @Value("${firebase.firebase-bucket}")
+    private String firebaseBucket;
+
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
-        // FIREBASE_SERVICE_ACCOUNT_PATH 유무 확인
         if (firebaseServiceAccountPath == null || firebaseServiceAccountPath.isEmpty()) {
             throw new IOException("Firebase service account path not configured in application.yml");
         }
-        // firebase 중복실행 방지 조건문
         if (FirebaseApp.getApps().isEmpty()) {
-            FileInputStream serviceAccount =
-                    new FileInputStream(firebaseServiceAccountPath);
+            FileInputStream serviceAccount = new FileInputStream(firebaseServiceAccountPath);
 
             FirebaseOptions options = new FirebaseOptions.Builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                    .setStorageBucket("${firebase.firebase-bucket}")
+                    .setStorageBucket(firebaseBucket)
                     .build();
 
             return FirebaseApp.initializeApp(options);
@@ -48,7 +49,13 @@ public class FirebaseConfig {
     }
 
     @Bean
-    public Storage storage() {
-        return StorageOptions.getDefaultInstance().getService();
+    public Firestore firestore() throws IOException {
+        return FirestoreClient.getFirestore(firebaseApp());
+    }
+
+    @Bean
+    public Storage storage() throws IOException {
+        GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(firebaseServiceAccountPath));
+        return StorageOptions.newBuilder().setCredentials(credentials).build().getService();
     }
 }
