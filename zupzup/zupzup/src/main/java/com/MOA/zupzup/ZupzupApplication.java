@@ -11,6 +11,5 @@ public class ZupzupApplication {
 
     public static void main(String[] args) {
         ApplicationContext context = SpringApplication.run(ZupzupApplication.class, args);
-
     }
 }
