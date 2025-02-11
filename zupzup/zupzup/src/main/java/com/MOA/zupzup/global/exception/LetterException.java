@@ -1,4 +1,4 @@
-package com.MOA.zupzup.exception;
+package com.MOA.zupzup.global.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

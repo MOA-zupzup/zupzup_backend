@@ -1,4 +1,4 @@
-package com.MOA.zupzup.login;
+package com.MOA.zupzup.global;
 
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.Bucket;

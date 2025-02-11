@@ -1,7 +1,7 @@
 package com.MOA.zupzup.letter;
 
-import com.MOA.zupzup.exception.ErrorCode;
-import com.MOA.zupzup.exception.LetterException;
+import com.MOA.zupzup.global.exception.ErrorCode;
+import com.MOA.zupzup.global.exception.LetterException;
 import com.MOA.zupzup.letter.dto.DroppingLetterRequest;
 import com.MOA.zupzup.letter.dto.LetterResponse;
 import com.google.api.core.ApiFuture;
