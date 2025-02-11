@@ -1,15 +1,17 @@
 package com.MOA.zupzup.login;
 
 import com.google.api.gax.paging.Page;
-import com.google.cloud.storage.Bucket;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.*;
+import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.cloud.StorageClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,46 +20,77 @@ import java.util.List;
 @Service
 public class FirebaseStorageService {
 
-    private final Storage storage;
-    private final String bucketName;
+    @Value("${firebase.firebase-bucket}")
+    private String firebaseBucket;
 
-    public FirebaseStorageService(Storage storage, @Value("${firebase.firebase-bucket}") String bucketName) {
-        this.storage = storage;
-        this.bucketName = bucketName;
+    // jpg, jpeg 확장자 이미지만 허용
+    private static final String[] POSSIBLE_EXTENSIONS = {".jpg", ".jpeg"};
+
+    // Firebase Storage의 특정 폴더 내 파일 목록을 가져와 URL 리스트로 반환하는 메서드
+    public List<String> listFilesInFolder(String folderName) throws IOException {
+        Bucket bucket = StorageClient.getInstance().bucket(firebaseBucket);
+        Page<Blob> blobs = bucket.list(Storage.BlobListOption.prefix(folderName + "/"));
+
+        List<String> urls = new ArrayList<>();
+        for (Blob blob : blobs.iterateAll()) {
+            if (!blob.isDirectory()) {
+                // URL 인코딩 (Firebase에서 URL을 생성할 때 필수)
+                String encodedUrl = "https://storage.googleapis.com/" + bucket.getName() + "/"
+                        + URLEncoder.encode(blob.getName(), StandardCharsets.UTF_8.toString());
+
+                // URL 디코딩 (원래의 '/' 형식으로 복원)
+                String decodedUrl = URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString());
+
+                urls.add(decodedUrl);
+            }
+        }
+        return urls;
     }
 
-    // firebase Storage의 LetterImage 폴더 안에 있는 파일들의 url 리스트를 반환하는 메소드
-    public List<String> getLetterImages() {
-        List<String> imageUrls = new ArrayList<>();
-        Bucket bucket = storage.get(bucketName);
+    // firebase Storage에 특정 폴더에 파일을 업로드하는 메소드
+    public String uploadFileToFolder(MultipartFile file, String folderName, String fileName)
+            throws IOException, FirebaseAuthException {
+        Bucket bucket = StorageClient.getInstance().bucket(firebaseBucket);
+        InputStream content = new ByteArrayInputStream(file.getBytes());
+        String fullPath = folderName + "/" + fileName;
+        Blob blob = bucket.create(fullPath, content, file.getContentType());
+        return blob.getMediaLink();
+    }
 
-        // LetterImage 폴더의 파일 목록 가져오기
-        Page<Blob> blobs = bucket.list(Storage.BlobListOption.prefix("letterImage/"));
+    // firebase Storage에 특정 폴더에 파일을 삭제하는 메소드
+    public boolean deleteFile(String folderName, String fileName) {
+        Bucket bucket = StorageClient.getInstance().bucket(firebaseBucket);
+        Blob blob = bucket.get(folderName + "/" + fileName);
+        if (blob == null && !fileName.contains(".")) {
+            for (String extension : POSSIBLE_EXTENSIONS) {
+                blob = bucket.get(folderName + "/" + fileName + extension);
+                if (blob != null) {
+                    break;
+                }
+            }
+        }
+        return blob != null && blob.delete();
+    }
 
+    // firebase Storage의 특정 폴더의 특정 인덱스 파일을 가져오는 메소드
+    public String getFileByIndex(String folderName, int index) throws IOException {
+        Bucket bucket = StorageClient.getInstance().bucket(firebaseBucket);
+        Page<Blob> blobs = bucket.list(Storage.BlobListOption.prefix(folderName + "/"));
+
+        List<String> urls = new ArrayList<>();
         for (Blob blob : blobs.iterateAll()) {
-            if(!blob.isDirectory()) {
-                String filePath = URLEncoder.encode(blob.getName(), StandardCharsets.UTF_8);
-                String imageUrl = "https://firebasestorage.googleapi.com/v0/b/" + bucketName + "/o/" + filePath + "?alt=media";
-                imageUrls.add(imageUrl);
+            if (!blob.isDirectory()) {
+                String encodedUrl = "https://storage.googleapis.com/" + bucket.getName() + "/"
+                        + URLEncoder.encode(blob.getName(), StandardCharsets.UTF_8.toString());
+                String decodedUrl = URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString());
+                urls.add(decodedUrl);
             }
         }
 
-        return imageUrls;
-    }
-
-    // firebase Storage에 파일을 업로드하는 메소드
-    public String upLoadFirebaseStorage(MultipartFile multipartFile, String fileName) throws IOException {
-        Bucket bucket = StorageClient.getInstance().bucket(bucketName);
-
-        Blob blob = bucket.create(fileName, multipartFile.getInputStream(), multipartFile.getContentType());
-
-        return blob.getMediaLink(); // firebase Storage 에 저장된 파일 url
-    }
-
-    // firebase Storage에 파일을 삭제하는 메소드
-    public void deleteFirebaseStorage(String fileName) {
-        Bucket bucket = StorageClient.getInstance().bucket(bucketName);
-
-        bucket.get(fileName).delete();
+        if (index >= 0 && index < urls.size()) {
+            return urls.get(index);
+        } else {
+            throw new IndexOutOfBoundsException("Index out of range: " + index);
+        }
     }
 }
