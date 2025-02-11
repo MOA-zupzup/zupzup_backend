@@ -2,3 +2,5 @@ firebase:
   firebase-bucket : zupzup-e3e05.firebasestorage.app
   service-account:
     path: "${FIREBASE_SERVICE_ACCOUNT_PATH}"
+
+spring:
