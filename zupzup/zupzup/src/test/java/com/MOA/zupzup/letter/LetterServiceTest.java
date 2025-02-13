@@ -14,7 +14,7 @@ import java.util.concurrent.ExecutionException;
 import static org.springframework.test.util.AssertionErrors.assertNotNull;
 
 @SpringBootTest
-@TestPropertySource(properties = "firebase.service-account.path=src/main/resources/zupzup-e3e05-firebase-adminsdk-1ujhj-725b926874.json")
+@TestPropertySource(properties = "firebase.service-account.path=C:/Users/jiin0/OneDrive/MoaGit/zupzup/zupzup-e3e05-firebase-adminsdk-1ujhj-4cd17a4987.json")
 public class LetterServiceTest {
 
     @Autowired
