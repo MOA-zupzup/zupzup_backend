@@ -1,9 +1,11 @@
 package com.MOA.zupzup.letter;
 
+import com.MOA.zupzup.global.exception.LetterException;
 import com.MOA.zupzup.letter.dto.DroppingLetterRequest;
 import com.MOA.zupzup.letter.dto.LetterResponse;
-import com.MOA.zupzup.login.FirebaseConfig;
+import com.MOA.zupzup.global.FirebaseConfig;
 import com.google.cloud.firestore.GeoPoint;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -58,6 +60,13 @@ public class LetterServiceTest {
         LetterResponse response = letterService.findLetter(savedId);
         System.out.println("Receiver : " + response.receiverId());
         assertNotNull(String.valueOf(response.id()), "편지 찾을 수 없음");
+    }
+
+    @Test
+    void 편지_줍기_에러_발생() {
+        Assertions.assertThrows(LetterException.class, () -> {
+            letterService.pickUpLetter("123", "who");
+        });
     }
 }
 
