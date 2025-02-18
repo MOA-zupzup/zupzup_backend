@@ -21,14 +21,14 @@ public class ShopController {
     private final ShopService shopService;
 
     @PostMapping("/new")
-    @Operation(summary = "Create Shop Item", description = "Creates a new shop item.")
+    @Operation(summary = "상점 아이템 생성", description = "Creates a new shop item.")
     public ResponseEntity<Void> createShopItem(@RequestBody ShopLetterItem request) {
         String itemId = shopService.createShopItem(request);
         return ResponseEntity.created(URI.create("/shop-items/" + itemId)).build();
     }
 
     @GetMapping("/{itemId}")
-    @Operation(summary = "Get Shop Item", description = "Retrieves a specific shop item by its ID.")
+    @Operation(summary = "상점 아이템을 id로 Get", description = "Retrieves a specific shop item by its ID.")
     public ResponseEntity<ShopResponse> findShopItem(
             @Parameter(description = "ID of the shop item to retrieve") @PathVariable String itemId) {
         ShopResponse response = ShopResponse.from(shopService.findShopItem(itemId));
@@ -36,7 +36,7 @@ public class ShopController {
     }
 
     @GetMapping("/index/{index}")
-    @Operation(summary = "Get Shop Item by Index", description = "Retrieves a specific shop item by its index.")
+    @Operation(summary = "상점 아이템을 인덱스로 Get", description = "Retrieves a specific shop item by its index.")
     public ResponseEntity<ShopResponse> findShopItemByIndex(
             @Parameter(description = "Index of the shop item to retrieve") @PathVariable int index) {
         ShopResponse response = ShopResponse.from(shopService.findShopItemByIndex(index));
@@ -44,7 +44,7 @@ public class ShopController {
     }
 
     @GetMapping("/all")
-    @Operation(summary = "List All Shop Items", description = "Retrieves all shop items.")
+    @Operation(summary = "모든 아이템을 Get", description = "Retrieves all shop items.")
     public ResponseEntity<List<ShopResponse>> findAllShopItems() {
         List<ShopResponse> responses = shopService.findAllShopItems().stream()
                 .map(ShopResponse::from)
@@ -53,7 +53,7 @@ public class ShopController {
     }
 
     @PutMapping("/index/{index}")
-    @Operation(summary = "Update Shop Item by Index", description = "Updates a specific shop item by its index.")
+    @Operation(summary = "상점 아이템을 인덱스로 업데이트", description = "Updates a specific shop item by its index.")
     public ResponseEntity<Void> updateShopItemByIndex(
             @Parameter(description = "Index of the shop item to update") @PathVariable int index,
             @RequestBody ShopLetterItem request) {
@@ -64,11 +64,20 @@ public class ShopController {
     }
 
     @DeleteMapping("/index/{index}")
-    @Operation(summary = "Delete Shop Item by Index", description = "Deletes a specific shop item by its index.")
+    @Operation(summary = "상점 아이템을 인덱스로 삭제", description = "Deletes a specific shop item by its index.")
     public ResponseEntity<Void> deleteShopItemByIndex(
             @Parameter(description = "Index of the shop item to delete") @PathVariable int index) {
         ShopLetterItem existingItem = shopService.findShopItemByIndex(index);
         shopService.deleteShopItem(existingItem.getId());
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/purchase/{memberId}/{index}")
+    @Operation(summary = "상점 아이템 구매", description = "Purchases a shop item using member's coins.")
+    public ResponseEntity<Void> purchaseShopItem(
+            @Parameter(description = "ID of the member purchasing the item") @PathVariable String memberId,
+            @Parameter(description = "Index of the shop item to purchase") @PathVariable int index) {
+        shopService.purchaseShopItem(memberId, index);
+        return ResponseEntity.ok().build();
     }
 }

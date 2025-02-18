@@ -2,6 +2,8 @@ package com.MOA.zupzup.shop;
 
 import com.MOA.zupzup.exception.ErrorCode;
 import com.MOA.zupzup.exception.ShopException;
+import com.MOA.zupzup.member.Member;
+import com.MOA.zupzup.member.OwnedLetter;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
@@ -19,11 +21,17 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ShopService {
 
-    private static final String COLLECTION_NAME = "shopItems";
+    private static final String COLLECTION_SHOP = "shopItems";
+    private static final String COLLECTION_MEMBER = "members";
 
     private CollectionReference getShopItemCollection() {
         Firestore db = FirestoreClient.getFirestore();
-        return db.collection(COLLECTION_NAME);
+        return db.collection(COLLECTION_SHOP);
+    }
+
+    private CollectionReference getMemberCollection() {
+        Firestore db = FirestoreClient.getFirestore();
+        return db.collection(COLLECTION_MEMBER);
     }
 
     @Transactional
@@ -95,6 +103,44 @@ public class ShopService {
             result.get();
         } catch (InterruptedException | ExecutionException e) {
             throw new ShopException(ErrorCode.SHOP_ITEM_DELETE_FAILED);
+        }
+    }
+
+    //-------- CRUD 이외 메서드 --------//
+
+    @Transactional
+    public void purchaseShopItem(String memberId, int index) {
+        try {
+            // Fetch member
+            DocumentReference memberDocRef = getMemberCollection().document(memberId);
+            ApiFuture<DocumentSnapshot> memberFuture = memberDocRef.get();
+            DocumentSnapshot memberDoc = memberFuture.get();
+            if (!memberDoc.exists()) {
+                throw new ShopException(ErrorCode.SHOP_MEMBER_NOT_FOUND);
+            }
+            Member member = memberDoc.toObject(Member.class);
+
+            // Fetch shop item
+            ShopLetterItem item = findShopItemByIndex(index);
+
+            // Check if member has enough coins
+            if (member.getCoin() < item.getPrice()) {
+                throw new ShopException(ErrorCode.SHOP_INSUFFICIENT_COINS);
+            }
+
+            // Deduct item price from member's coins
+            member.setCoin(member.getCoin() - item.getPrice());
+
+            // Add item to member's owned letters
+            CollectionReference ownedLettersRef = memberDocRef.collection("ownedLetter");
+            DocumentReference ownedLetterDocRef = ownedLettersRef.document(item.getId());
+            ownedLetterDocRef.set(new OwnedLetter(item.getName(), item.getImageUrl(), 1, false));
+
+            // Update member's coin balance in Firestore
+            ApiFuture<WriteResult> writeResult = memberDocRef.set(member);
+            writeResult.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new ShopException(ErrorCode.SHOP_ITEM_PURCHASE_FAILED);
         }
     }
 

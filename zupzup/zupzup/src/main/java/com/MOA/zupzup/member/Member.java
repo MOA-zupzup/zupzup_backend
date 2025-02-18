@@ -1,3 +1,5 @@
+// src/main/java/com/MOA/zupzup/member/Member.java
+
 package com.MOA.zupzup.member;
 
 import jakarta.persistence.Column;
@@ -16,14 +18,8 @@ public class Member {
     @Column(name = "user_id")
     private String userId;
 
-    @Column(name = "password", length = 20, nullable = false)
-    private String password;
-
     @Column(name = "nickname", length = 255, nullable = false)
     private String nickname;
-
-    @Column(name = "email", length = 20, nullable = false)
-    private String email;
 
     @Column(name = "coin")
     private Integer coin = 0;
@@ -32,11 +28,9 @@ public class Member {
     private Integer phase = 1;
 
     @Builder
-    public Member(String userId, String password, String nickname, String email, Integer coin, Integer phase) {
+    public Member(String userId, String nickname, Integer coin, Integer phase) {
         this.userId = userId;
-        this.password = password;
         this.nickname = nickname;
-        this.email = email;
         this.coin = coin != null ? coin : 0;
         this.phase = phase != null ? phase : 1;
     }

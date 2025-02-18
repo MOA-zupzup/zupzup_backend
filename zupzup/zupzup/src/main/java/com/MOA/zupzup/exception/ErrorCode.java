@@ -21,7 +21,10 @@ public enum ErrorCode {
     SHOP_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 아이디 값을 가진 상점 아이템을 찾을 수 없습니다."),
     SHOP_ITEM_FIND_FAILED(HttpStatus.BAD_REQUEST, "상점 아이템을 불러오는데 실패했습니다."),
     SHOP_ITEM_UPDATE_FAILED(HttpStatus.BAD_REQUEST, "상점 아이템을 수정하는데 실패했습니다."),
-    SHOP_ITEM_DELETE_FAILED(HttpStatus.BAD_REQUEST, "상점 아이템을 삭제하는데 실패했습니다.");
+    SHOP_ITEM_DELETE_FAILED(HttpStatus.BAD_REQUEST, "상점 아이템을 삭제하는데 실패했습니다."),
+    SHOP_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 아이디 값을 가진 상점 아이템을 찾을 수 없습니다."),
+    SHOP_INSUFFICIENT_COINS(HttpStatus.BAD_REQUEST, "코인이 부족합니다."),
+    SHOP_ITEM_PURCHASE_FAILED(HttpStatus.BAD_REQUEST, "상점 아이템을 구매하는데 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
