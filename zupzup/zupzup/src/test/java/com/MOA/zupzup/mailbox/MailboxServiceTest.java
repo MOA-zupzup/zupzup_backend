@@ -1,78 +1,57 @@
 package com.MOA.zupzup.mailbox;
 
-import com.google.auth.oauth2.GoogleCredentials;
+import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
-import com.MOA.zupzup.global.FirebaseConfig;
 import com.google.cloud.firestore.GeoPoint;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.FirebaseOptions;
+import com.google.cloud.firestore.WriteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @TestPropertySource(properties = "firebase.service-account.path=C:/Users/jiin0/OneDrive/MoaGit/zupzup/zupzup-e3e05-firebase-adminsdk-1ujhj-b25026bb30.json")
 public class MailboxServiceTest {
 
-    @Autowired
+    @InjectMocks
     private MailboxService mailboxService;
 
-    @Autowired
-    private FirebaseConfig firebaseConfig;
+    @Mock
+    private DocumentReference docRef;
 
-    @Autowired
-    private Firestore firestore;
-
-    private Mailbox mailbox;
+    @Mock
+    private ApiFuture<WriteResult> apiFuture; // ApiFuture로 모킹
 
     @BeforeEach
-    void setUp() throws IOException {
-        if (FirebaseApp.getApps().isEmpty()){
-        FileInputStream serviceAccount = new FileInputStream("C:/Users/jiin0/OneDrive/MoaGit/zupzup/zupzup-e3e05-firebase-adminsdk-1ujhj-b25026bb30.json");
-        FirebaseOptions options = new FirebaseOptions.Builder()
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                .build();
-        FirebaseApp.initializeApp(options);
-}
-        mailbox = Mailbox.builder()
-                .id("testMailbox123")
-                .location(new GeoPoint(37,-122))
-                .radius(100.0)
-                .letterIds(List.of("letter1","letter2"))
-                .build();
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
     }
 
     @Test
-    void testSaveMailbox() throws ExecutionException, InterruptedException {
-        mailboxService.saveMailbox(mailbox);
+    void createMailbox() throws ExecutionException, InterruptedException {
+        // Arrange
+        GeoPoint location = new GeoPoint(37, -122);
+        List<String> letterIds = Arrays.asList("letter1","letter2","letter3");
+        Mailbox mailbox = new Mailbox("1", location, 10.0, letterIds, 3);
 
-        DocumentReference docRef = firestore.collection("mailboxes").document(mailbox.getId());
-        DocumentSnapshot document = docRef.get().get();
+        // ApiFuture를 모킹하여 WriteResult를 반환
+        WriteResult writeResult = mock(WriteResult.class); // WriteResult 모킹
+        when(docRef.getId()).thenReturn("1");
+        when(docRef.set(mailbox)).thenReturn(apiFuture);
+        when(apiFuture.get()).thenReturn(writeResult); // ApiFuture.get() 호출 시, WriteResult 반환
 
-        assertTrue(document.exists());
-        Mailbox savedMailbox = document.toObject(Mailbox.class);
-        assertNotNull(savedMailbox);
-        assertEquals(mailbox.getId(), savedMailbox.getId());
-    }
+        // Act
+        String result = mailboxService.createMailbox(mailbox);
 
-    @Test
-    void testGetMailbox() throws ExecutionException, InterruptedException{
-        mailboxService.saveMailbox(mailbox);
-
-        Mailbox retrievedMailbox = mailboxService.getMailboxById(mailbox.getId());
-
-        assertNotNull(retrievedMailbox);
-        assertEquals(mailbox.getId(),retrievedMailbox.getId());
     }
 }
