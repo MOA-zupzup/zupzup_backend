@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @RequiredArgsConstructor
@@ -19,9 +20,10 @@ public class MailboxService {
         return db.collection(COLLECTION_NAME);
     }
 
-    public String createMailbox(Mailbox mailbox) {
-        DocumentReference docRef = getMailboxCollection().document();
-        mailbox.setId(docRef.getId());
+    public String createMailbox(Mailbox mailbox, String mailboxId) {
+        DocumentReference docRef = getMailboxCollection().document(mailboxId);
+        mailbox.setId(mailboxId);
+        mailbox.setLetterCount(mailbox.getLetterIds().size());
         ApiFuture<WriteResult> mailboxApiFuture = docRef.set(mailbox);
         try {
             mailboxApiFuture.get(); // Wait for the operation to complete
@@ -66,8 +68,8 @@ public class MailboxService {
     }
 
     public void updateMailbox(Mailbox mailbox) {
-        String id = mailbox.getId();
-        DocumentReference docRef = getMailboxCollection().document(id);
+        mailbox.setLetterCount(mailbox.getLetterIds().size());
+        DocumentReference docRef = getMailboxCollection().document(mailbox.getId());
         ApiFuture<WriteResult> result = docRef.set(mailbox);
         try {
             result.get(); // Wait for the operation to complete
@@ -86,6 +88,7 @@ public class MailboxService {
         }
     }
 
+    // 사용자가 우편함 반경에 있는지 판단
     public boolean isWithinRadius(GeoPoint userLocation, Mailbox mailbox){
         double distance = calculateDistance(userLocation, mailbox.getLocation());
         return distance <= mailbox.getRadius();
@@ -107,5 +110,51 @@ public class MailboxService {
                         Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return earthRadius * c;  // km 단위
+    }
+
+    public void addLetterToMailbox(String mailboxId, String letterId) {
+        DocumentReference mailboxRef = getMailboxCollection().document(mailboxId);
+
+        try {
+            FirestoreClient.getFirestore().runTransaction(transaction -> {
+                DocumentSnapshot snapshot = transaction.get(mailboxRef).get();
+                if (!snapshot.exists()) {
+                    throw new IllegalArgumentException("Mailbox not found");
+                }
+
+                Mailbox mailbox = snapshot.toObject(Mailbox.class);
+                if (mailbox != null) {
+                    mailbox.getLetterIds().add(letterId);
+                    mailbox.setLetterCount(mailbox.getLetterIds().size());
+                    transaction.set(mailboxRef, mailbox);
+                }
+                return null;
+            }).get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void removeLetterFromMailbox(String mailboxId, String letterId) {
+        DocumentReference mailboxRef = getMailboxCollection().document(mailboxId);
+
+        try {
+            FirestoreClient.getFirestore().runTransaction(transaction -> {
+                DocumentSnapshot snapshot = transaction.get(mailboxRef).get();
+                if (!snapshot.exists()) {
+                    throw new IllegalArgumentException("Mailbox not found");
+                }
+
+                Mailbox mailbox = snapshot.toObject(Mailbox.class);
+                if (mailbox != null) {
+                    mailbox.getLetterIds().remove(letterId);
+                    mailbox.setLetterCount(mailbox.getLetterIds().size());
+                    transaction.set(mailboxRef, mailbox);
+                }
+                return null;
+            }).get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
     }
 }

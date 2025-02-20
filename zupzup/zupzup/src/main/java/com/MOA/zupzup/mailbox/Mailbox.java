@@ -3,28 +3,29 @@ package com.MOA.zupzup.mailbox;
 import com.google.cloud.firestore.GeoPoint;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
-@Getter
-@Builder
+@Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class Mailbox {
 
+    @Setter
     private String id;
     private GeoPoint location;
     private double radius;
-    private List<String> letterIds;
+    private List<String> letterIds = new ArrayList<>();
     private int letterCount;
 
-
-    public Mailbox(String id, GeoPoint location, double radius, List<String> letterIds, int letterCount){
-        this.id = id;
-        this.location = location;
-        this.radius = radius;
-        this.letterIds = letterIds;
-        this.letterCount = letterCount;
+    public void addLetter(String letterId){
+        this.letterIds.add(letterId);
+        this.letterCount = this.letterIds.size();
     }
 
-    public void setId(String id){this.id = id;}
+    public void removeLetter(String letterId){
+        letterIds.remove(letterId);
+        letterCount = letterIds.size();
+    }
 
 }
