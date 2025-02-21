@@ -22,7 +22,7 @@ public class MailboxController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "우편함 생성", description = "원하는 ID로 새로운 우편함을 생성합니다.")
-    public String createMailbox(@RequestBody Mailbox mailbox, @RequestParam String mailboxId) {
+    public Mailbox createMailbox(@RequestBody Mailbox mailbox, @RequestParam String mailboxId) {
         // 우편함 생성 후, 생성된 ID를 반환
         return mailboxService.createMailbox(mailbox, mailboxId);
     }

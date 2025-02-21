@@ -1,5 +1,7 @@
 package com.MOA.zupzup.mailbox;
 
+import com.MOA.zupzup.global.exception.ErrorCode;
+import com.MOA.zupzup.global.exception.MailboxException;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
@@ -7,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 
 @Service
 @RequiredArgsConstructor
@@ -20,50 +24,36 @@ public class MailboxService {
         return db.collection(COLLECTION_NAME);
     }
 
-    public String createMailbox(Mailbox mailbox, String mailboxId) {
-        DocumentReference docRef = getMailboxCollection().document(mailboxId);
-        mailbox.setId(mailboxId);
-        mailbox.setLetterCount(mailbox.getLetterIds().size());
-        ApiFuture<WriteResult> mailboxApiFuture = docRef.set(mailbox);
+    public Mailbox createMailbox(Mailbox mailbox, String mailboxId) {
         try {
-            mailboxApiFuture.get(); // Wait for the operation to complete
-        } catch (Exception e) {
-            // 예외 처리 부분을 제거했으므로, 그냥 출력하고 종료하도록 할 수 있습니다.
-            e.printStackTrace(); // 또는 로그를 남길 수 있습니다.
+            DocumentReference docRef = getMailboxCollection().document(mailboxId);
+            mailbox.setId(docRef.getId());
+            ApiFuture<WriteResult> mailboxApiFuture = docRef.set(mailbox);
+            mailboxApiFuture.get();
+            return mailbox;
+        } catch (InterruptedException | ExecutionException e) {
+            throw new MailboxException(ErrorCode.MAILBOX_CREATE_FAILED); // 예외 던지기
         }
-        return docRef.getId();
     }
 
     public Mailbox findMailboxById(String id) {
-        DocumentReference docRef = getMailboxCollection().document(id);
-        ApiFuture<DocumentSnapshot> future = docRef.get();
-        DocumentSnapshot document = null;
         try {
-            document = future.get(); // Wait for the operation to complete
-        } catch (Exception e) {
-            // 예외 처리 부분을 제거했으므로, 그냥 출력하고 종료하도록 할 수 있습니다.
-            e.printStackTrace();
-        }
-        if (document != null && document.exists()) {
-            return document.toObject(Mailbox.class);
-        } else {
-            // document가 null이거나 존재하지 않으면 null을 반환합니다.
-            return null;
+            DocumentReference docRef = getMailboxCollection().document(id);
+            ApiFuture<DocumentSnapshot> future = docRef.get();
+            DocumentSnapshot document = future.get();
+            return handleFirestoreResult(document, () -> new MailboxException(ErrorCode.MAILBOX_NOT_FOUND)); // 예외 처리
+        } catch (InterruptedException | ExecutionException e) {
+            throw new MailboxException(ErrorCode.MAILBOX_FIND_FAILED);
         }
     }
 
     public List<QueryDocumentSnapshot> findAllMailboxes() {
         ApiFuture<QuerySnapshot> future = getMailboxCollection().get();
-        QuerySnapshot querySnapshot = null;
         try {
-            querySnapshot = future.get(); // Wait for the operation to complete
+            QuerySnapshot querySnapshot = future.get();
+            return querySnapshot != null ? querySnapshot.getDocuments() : Collections.emptyList();  // 빈 리스트 반환
         } catch (Exception e) {
-            e.printStackTrace(); // 예외 발생 시 출력
-        }
-        if (querySnapshot != null) {
-            return querySnapshot.getDocuments();
-        } else {
-            return null; // 데이터가 없으면 null 반환
+            return Collections.emptyList();  // 예외 발생 시 빈 리스트 반환
         }
     }
 
@@ -73,8 +63,8 @@ public class MailboxService {
         ApiFuture<WriteResult> result = docRef.set(mailbox);
         try {
             result.get(); // Wait for the operation to complete
-        } catch (Exception e) {
-            e.printStackTrace(); // 예외 발생 시 출력
+        } catch (InterruptedException | ExecutionException e) {
+            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED); // 던지기
         }
     }
 
@@ -83,8 +73,8 @@ public class MailboxService {
         ApiFuture<WriteResult> result = docRef.delete();
         try {
             result.get(); // Wait for the operation to complete
-        } catch (Exception e) {
-            e.printStackTrace(); // 예외 발생 시 출력
+        } catch (InterruptedException | ExecutionException e) {
+            throw new MailboxException(ErrorCode.MAILBOX_DELETE_FAILED);  // 예외 던지기
         }
     }
 
@@ -119,7 +109,7 @@ public class MailboxService {
             FirestoreClient.getFirestore().runTransaction(transaction -> {
                 DocumentSnapshot snapshot = transaction.get(mailboxRef).get();
                 if (!snapshot.exists()) {
-                    throw new IllegalArgumentException("Mailbox not found");
+                    throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
                 }
 
                 Mailbox mailbox = snapshot.toObject(Mailbox.class);
@@ -127,13 +117,18 @@ public class MailboxService {
                     mailbox.getLetterIds().add(letterId);
                     mailbox.setLetterCount(mailbox.getLetterIds().size());
                     transaction.set(mailboxRef, mailbox);
+                } else {
+                    throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
                 }
-                return null;
+                return null;  // 트랜잭션 완료
             }).get();
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED); // 예외 처리
         }
     }
+
+    //=== 편지 작성 시 우편함에 추가 ===//
+
 
     public void removeLetterFromMailbox(String mailboxId, String letterId) {
         DocumentReference mailboxRef = getMailboxCollection().document(mailboxId);
@@ -142,7 +137,7 @@ public class MailboxService {
             FirestoreClient.getFirestore().runTransaction(transaction -> {
                 DocumentSnapshot snapshot = transaction.get(mailboxRef).get();
                 if (!snapshot.exists()) {
-                    throw new IllegalArgumentException("Mailbox not found");
+                    throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
                 }
 
                 Mailbox mailbox = snapshot.toObject(Mailbox.class);
@@ -150,11 +145,23 @@ public class MailboxService {
                     mailbox.getLetterIds().remove(letterId);
                     mailbox.setLetterCount(mailbox.getLetterIds().size());
                     transaction.set(mailboxRef, mailbox);
+                } else {
+                    throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
                 }
-                return null;
+                return null;  // 트랜잭션 완료
             }).get();
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED); // 예외 처리
         }
     }
+
+    //=== 검증 메서드===//
+    private Mailbox handleFirestoreResult(DocumentSnapshot documentSnapshot, Supplier<? extends RuntimeException> supplier){
+        return documentSnapshot.exists() ? documentSnapshot.toObject(Mailbox.class) : throwException(supplier);
+    }
+
+    private <T> T throwException(Supplier<? extends RuntimeException> exceptionSupplier) {
+        throw exceptionSupplier.get();
+    }
+
 }

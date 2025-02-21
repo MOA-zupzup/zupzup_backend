@@ -1,15 +1,14 @@
 package com.MOA.zupzup.mailbox;
 
-import com.google.cloud.firestore.GeoPoint;
-import com.google.firebase.cloud.FirestoreClient;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,58 +16,64 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestPropertySource(properties = "firebase.service-account.path=C:/Users/jiin0/OneDrive/MoaGit/zupzup/zupzup-e3e05-firebase-adminsdk-1ujhj-b25026bb30.json")
 public class MailboxServiceTest {
 
+    @Autowired
     private MailboxService mailboxService;
 
+    private static final String TEST_MAILBOX_ID = "testMailbox";
+    private static final String TEST_LETTER_ID = "testLetter";
+
     @BeforeEach
-    void setUp() {
-        mailboxService = new MailboxService();
+    void setUp() throws ExecutionException, InterruptedException {
+        // Firestore에 테스트용 Mailbox 데이터 추가
+        Mailbox mailbox = new Mailbox();
+        mailbox.setId(TEST_MAILBOX_ID);
+        mailbox.setRadius(100);
+        mailbox.setLetterIds(Arrays.asList("letter1", "letter2"));
+
+        mailboxService.createMailbox(mailbox, TEST_MAILBOX_ID);
+    }
+
+    @AfterEach
+    void tearDown() throws ExecutionException, InterruptedException {
+        // Firestore에서 테스트 데이터 삭제
+        mailboxService.deleteMailboxById(TEST_MAILBOX_ID);
     }
 
     @Test
-    void testCreateMailbox() {
-        Mailbox mailbox = new Mailbox();
-        String Id = "test0";
-        mailbox.setLocation(new GeoPoint(37.5665, 126.9780)); // 서울 위도, 경도
-        mailbox.setRadius(10.0);
-        mailbox.setLetterIds(new ArrayList<>()); // 빈 리스트
+    void testFindMailboxById() throws ExecutionException, InterruptedException {
+        Mailbox mailbox = mailboxService.findMailboxById(TEST_MAILBOX_ID);
 
-        String mailboxId = mailboxService.createMailbox(mailbox, Id);
-
-        assertNotNull(mailboxId, "Mailbox ID should not be null");
-        Mailbox createdMailbox = mailboxService.findMailboxById(mailboxId);
-        assertNotNull(createdMailbox, "Created mailbox should be found");
-        assertEquals(0, createdMailbox.getLetterCount(), "Initial letter count should be 0");
+        assertNotNull(mailbox);
+        assertEquals(TEST_MAILBOX_ID, mailbox.getId());
+        assertEquals(100, mailbox.getRadius());
+        assertEquals(2, mailbox.getLetterIds().size());
     }
 
     @Test
-    void testAddLetterToMailbox() {
-        Mailbox mailbox = new Mailbox();
-        mailbox.setLocation(new GeoPoint(37.5665, 126.9780));
-        mailbox.setRadius(10.0);
-        mailbox.setLetterIds(new ArrayList<>());
+    void testUpdateMailbox() throws ExecutionException, InterruptedException {
+        Mailbox mailbox = mailboxService.findMailboxById(TEST_MAILBOX_ID);
+        mailbox.setRadius(200); // 반경 변경
 
-        String mailboxId = mailboxService.createMailbox(mailbox,"addLetterTest");
-        mailboxService.addLetterToMailbox(mailboxId, "letter1");
+        mailboxService.updateMailbox(mailbox);
+        Mailbox updatedMailbox = mailboxService.findMailboxById(TEST_MAILBOX_ID);
 
-        Mailbox updatedMailbox = mailboxService.findMailboxById(mailboxId);
-        assertNotNull(updatedMailbox);
-        assertEquals(1, updatedMailbox.getLetterCount(), "Letter count should be 1 after adding a letter");
+        assertEquals(200, updatedMailbox.getRadius()); // 변경 확인
     }
 
     @Test
-    void testRemoveLetterFromMailbox() {
-        Mailbox mailbox = new Mailbox();
-        mailbox.setLocation(new GeoPoint(37.5665, 126.9780));
-        mailbox.setRadius(10.0);
-        List<String> letterIds = new ArrayList<>();
-        letterIds.add("letter1");
-        mailbox.setLetterIds(letterIds);
+    void testAddLetterToMailbox() throws ExecutionException, InterruptedException {
+        mailboxService.addLetterToMailbox(TEST_MAILBOX_ID, TEST_LETTER_ID);
+        Mailbox mailbox = mailboxService.findMailboxById(TEST_MAILBOX_ID);
 
-        String mailboxId = mailboxService.createMailbox(mailbox,"removeLetterTest");
-        mailboxService.removeLetterFromMailbox(mailboxId, "letter1");
+        assertTrue(mailbox.getLetterIds().contains(TEST_LETTER_ID));
+    }
 
-        Mailbox updatedMailbox = mailboxService.findMailboxById(mailboxId);
-        assertNotNull(updatedMailbox);
-        assertEquals(0, updatedMailbox.getLetterCount(), "Letter count should be 0 after removing the letter");
+    @Test
+    void testRemoveLetterFromMailbox() throws ExecutionException, InterruptedException {
+        mailboxService.addLetterToMailbox(TEST_MAILBOX_ID, TEST_LETTER_ID);
+        mailboxService.removeLetterFromMailbox(TEST_MAILBOX_ID, TEST_LETTER_ID);
+        Mailbox mailbox = mailboxService.findMailboxById(TEST_MAILBOX_ID);
+
+        assertFalse(mailbox.getLetterIds().contains(TEST_LETTER_ID));
     }
 }

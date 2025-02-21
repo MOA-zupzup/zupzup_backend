@@ -22,4 +22,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         // TODO: body 필요
         return ResponseEntity.internalServerError().build();
     }
+
+    @ExceptionHandler(MailboxException.class)
+    public ResponseEntity<ErrorResponse> handleMailboxException(MailboxException ex) {
+        log.error("MailboxException : {}", ex.getErrorCode());
+        return ErrorResponse.toResponseEntity(ex.getErrorCode());
+    }
 }
