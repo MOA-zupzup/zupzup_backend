@@ -2,18 +2,20 @@ package com.MOA.zupzup.mailbox;
 
 import com.MOA.zupzup.global.exception.ErrorCode;
 import com.MOA.zupzup.global.exception.MailboxException;
+import com.MOA.zupzup.global.exception.MailboxNotFoundException;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class MailboxService {
 
@@ -24,15 +26,23 @@ public class MailboxService {
         return db.collection(COLLECTION_NAME);
     }
 
+
     public Mailbox createMailbox(Mailbox mailbox, String mailboxId) {
+        DocumentReference docRef = getMailboxCollection().document(mailboxId);
+
         try {
-            DocumentReference docRef = getMailboxCollection().document(mailboxId);
-            mailbox.setId(docRef.getId());
-            ApiFuture<WriteResult> mailboxApiFuture = docRef.set(mailbox);
-            mailboxApiFuture.get();
+            FirestoreClient.getFirestore().runTransaction(transaction -> {
+                DocumentSnapshot snapshot = transaction.get(docRef).get();
+                if (snapshot.exists()) {
+                    throw new MailboxException(ErrorCode.MAILBOX_ALREADY_EXISTS);
+                }
+                mailbox.setId(mailboxId);
+                transaction.set(docRef, mailbox);
+                return null;
+            }).get();
             return mailbox;
         } catch (InterruptedException | ExecutionException e) {
-            throw new MailboxException(ErrorCode.MAILBOX_CREATE_FAILED); // 예외 던지기
+            throw new MailboxException(ErrorCode.MAILBOX_CREATE_FAILED);
         }
     }
 
@@ -41,48 +51,93 @@ public class MailboxService {
             DocumentReference docRef = getMailboxCollection().document(id);
             ApiFuture<DocumentSnapshot> future = docRef.get();
             DocumentSnapshot document = future.get();
-            return handleFirestoreResult(document, () -> new MailboxException(ErrorCode.MAILBOX_NOT_FOUND)); // 예외 처리
+            return handleFirestoreResult(document, () -> new MailboxException(ErrorCode.MAILBOX_NOT_FOUND));
         } catch (InterruptedException | ExecutionException e) {
             throw new MailboxException(ErrorCode.MAILBOX_FIND_FAILED);
         }
     }
 
+    public Mailbox getMailboxById(String id) {
+        Mailbox mailbox = findMailboxById(id);  // Firestore에서 우편함 조회
+        if (mailbox == null) {
+            throw new MailboxNotFoundException("Mailbox with id " + id + " not found");
+        }
+        // 추가적인 검증 로직을 여기서 처리
+        return mailbox;
+    }
+
     public List<QueryDocumentSnapshot> findAllMailboxes() {
-        ApiFuture<QuerySnapshot> future = getMailboxCollection().get();
         try {
+            ApiFuture<QuerySnapshot> future = getMailboxCollection().get();
             QuerySnapshot querySnapshot = future.get();
-            return querySnapshot != null ? querySnapshot.getDocuments() : Collections.emptyList();  // 빈 리스트 반환
-        } catch (Exception e) {
-            return Collections.emptyList();  // 예외 발생 시 빈 리스트 반환
+            if (querySnapshot == null || querySnapshot.isEmpty()) {
+                throw new MailboxException(ErrorCode.NO_MAILBOXES_FOUND);
+            }
+            return querySnapshot.getDocuments();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new MailboxException(ErrorCode.MAILBOX_FIND_FAILED);
         }
     }
 
     public void updateMailbox(Mailbox mailbox) {
-        mailbox.setLetterCount(mailbox.getLetterIds().size());
         DocumentReference docRef = getMailboxCollection().document(mailbox.getId());
-        ApiFuture<WriteResult> result = docRef.set(mailbox);
+
         try {
-            result.get(); // Wait for the operation to complete
+            FirestoreClient.getFirestore().runTransaction(transaction -> {
+                DocumentSnapshot snapshot = transaction.get(docRef).get();
+                if (!snapshot.exists()) {
+                    throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
+                }
+
+                mailbox.setLetterCount(mailbox.getLetterIds().size());
+                transaction.set(docRef, mailbox);
+                return null;  // 트랜잭션 완료
+            }).get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED); // 던지기
+            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED);
         }
     }
 
+    @Transactional
     public void deleteMailboxById(String id) {
         DocumentReference docRef = getMailboxCollection().document(id);
-        ApiFuture<WriteResult> result = docRef.delete();
         try {
-            result.get(); // Wait for the operation to complete
+            DocumentSnapshot snapshot = docRef.get().get();
+            if (!snapshot.exists()) {
+                throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND); // 존재하지 않으면 예외 발생
+            }
+            docRef.delete().get(); // 삭제 실행
         } catch (InterruptedException | ExecutionException e) {
-            throw new MailboxException(ErrorCode.MAILBOX_DELETE_FAILED);  // 예외 던지기
+            throw new MailboxException(ErrorCode.MAILBOX_DELETE_FAILED);
         }
     }
 
     // 사용자가 우편함 반경에 있는지 판단
-    public boolean isWithinRadius(GeoPoint userLocation, Mailbox mailbox){
+    public boolean isWithinRadius(GeoPoint userLocation, Mailbox mailbox) {
+        // 예외 처리: null 값 체크 (MailboxException 사용)
+        if (userLocation == null) {
+            throw new MailboxException(ErrorCode.INVALID_USER_LOCATION);  // ErrorCode에 맞는 값 사용
+        }
+        if (mailbox == null || mailbox.getLocation() == null) {
+            throw new MailboxException(ErrorCode.INVALID_MAILBOX_LOCATION);  // ErrorCode에 맞는 값 사용
+        }
+
+        // 위도, 경도 차이를 비교하여 너무 멀리 떨어져 있으면 빠르게 필터링
+        double lat1 = userLocation.getLatitude();
+        double lon1 = userLocation.getLongitude();
+        double lat2 = mailbox.getLocation().getLatitude();
+        double lon2 = mailbox.getLocation().getLongitude();
+
+        // 위도, 경도 차이가 너무 크면 바로 false 반환
+        if (Math.abs(lat1 - lat2) > 0.1 || Math.abs(lon1 - lon2) > 0.1) {
+            return false; // 너무 차이가 나면 반경 내에 있을 수 없음
+        }
+
+        // Haversine 공식으로 실제 거리 계산
         double distance = calculateDistance(userLocation, mailbox.getLocation());
         return distance <= mailbox.getRadius();
     }
+
 
     private double calculateDistance(GeoPoint userLocation, GeoPoint mailboxLocation){
         // 위도, 경도 차이를 이용한 거리 계산
@@ -102,6 +157,7 @@ public class MailboxService {
         return earthRadius * c;  // km 단위
     }
 
+    @Transactional
     public void addLetterToMailbox(String mailboxId, String letterId) {
         DocumentReference mailboxRef = getMailboxCollection().document(mailboxId);
 
@@ -114,8 +170,7 @@ public class MailboxService {
 
                 Mailbox mailbox = snapshot.toObject(Mailbox.class);
                 if (mailbox != null) {
-                    mailbox.getLetterIds().add(letterId);
-                    mailbox.setLetterCount(mailbox.getLetterIds().size());
+                    mailbox.addLetter(letterId);
                     transaction.set(mailboxRef, mailbox);
                 } else {
                     throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
@@ -129,7 +184,7 @@ public class MailboxService {
 
     //=== 편지 작성 시 우편함에 추가 ===//
 
-
+    @Transactional
     public void removeLetterFromMailbox(String mailboxId, String letterId) {
         DocumentReference mailboxRef = getMailboxCollection().document(mailboxId);
 
@@ -142,8 +197,7 @@ public class MailboxService {
 
                 Mailbox mailbox = snapshot.toObject(Mailbox.class);
                 if (mailbox != null) {
-                    mailbox.getLetterIds().remove(letterId);
-                    mailbox.setLetterCount(mailbox.getLetterIds().size());
+                    mailbox.removeLetter(letterId);
                     transaction.set(mailboxRef, mailbox);
                 } else {
                     throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
