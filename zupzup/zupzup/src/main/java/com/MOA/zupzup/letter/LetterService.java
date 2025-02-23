@@ -71,6 +71,11 @@ public class LetterService {
         try {
             String imageUrl = memberService.getOwnedStationeryImageUrl(senderId, stationeryId);
             letter.setPaperUrl(imageUrl);  // paperUrl에 imageUrl 설정
+
+            // 편지지 수량 감소
+            boolean updated = memberService.updateStationeryCount(senderId, stationeryId, memberService.setStationeryCount(senderId, stationeryId) - 1);
+            System.out.println("업데이트된 편지 수량: " + memberService.setStationeryCount(senderId, stationeryId));
+
             DocumentReference docRef = getLetterCollection().document();
             letter.setId(docRef.getId());
             ApiFuture<WriteResult> letterApiFuture = docRef.set(letter);

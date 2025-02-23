@@ -66,7 +66,7 @@ public class MemberService {
         return null;
     }
 
-    // 사용자가 소유한 특정 편지지의 imageUrl만 가져오기
+    // 사용자가 소유한 특정 편지지의 imageUrl만 가져오기 (LetterService에서 사용함.)
     public String getOwnedStationeryImageUrl(String userId, String stationeryId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
