@@ -88,9 +88,10 @@ public class ShopController {
     @Operation(summary = "상점 아이템 구매", description = "Purchases a shop item using member's coins.")
     public ResponseEntity<ApiResponse<Void>> purchaseShopItem(
             @Parameter(description = "ID of the member purchasing the item") @PathVariable String memberId,
-            @Parameter(description = "Name of the shop item to purchase") @PathVariable String name) {
+            @Parameter(description = "Name of the shop item to purchase") @PathVariable String name,
+            @RequestParam int quantity) {
         try {
-            shopService.purchaseShopItemByName(memberId, name);
+            shopService.purchaseShopItemByName(memberId, name, quantity);
             return ResponseEntity.ok(new ApiResponse<>(true, "아이템 구매 성공", null));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponse<>(false, "아이템 구매 실패: " + e.getMessage(), null));

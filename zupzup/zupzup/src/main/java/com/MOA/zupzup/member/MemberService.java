@@ -56,7 +56,14 @@ public class MemberService {
                 .document(stationeryId);
 
         DocumentSnapshot document = stationeryRef.get().get();
-        return document.exists() ? document.getData() : null;
+        if (document.exists()) {
+            Long count = document.getLong("count");
+            if (count != null && count == 0) {
+                throw new IllegalStateException("해당 편지지를 가지고 있지 않습니다");
+            }
+            return document.getData();
+        }
+        return null;
     }
 
     // 사용자가 소유한 편지지 삭제
@@ -113,7 +120,11 @@ public class MemberService {
                 return false;  // count가 음수일 경우 업데이트하지 않음
             }
 
-            stationeryRef.update("count", newCount);
+            if (newCount == 0) {
+                stationeryRef.delete().get();  // count가 0이면 문서 삭제
+            } else {
+                stationeryRef.update("count", newCount);
+            }
             return true;  // 업데이트 성공
         }
         return false;  // 해당 문서가 없으면 업데이트 실패

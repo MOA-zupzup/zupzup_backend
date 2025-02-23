@@ -98,9 +98,9 @@ public class ShopService {
     }
 
     @Transactional
-    public void purchaseShopItemByName(String memberId, String name) {
+    public void purchaseShopItemByName(String memberId, String name, int quantity) {
         try {
-            // Fetch member
+            // 멤버 패치
             DocumentReference memberDocRef = getMemberCollection().document(memberId);
             ApiFuture<DocumentSnapshot> memberFuture = memberDocRef.get();
             DocumentSnapshot memberDoc = memberFuture.get();
@@ -109,23 +109,31 @@ public class ShopService {
             }
             Member member = memberDoc.toObject(Member.class);
 
-            // Fetch shop item
+            // 상점 아이템 패치
             ShopLetterItem item = findShopItemByName(name);
 
-            // Check if member has enough coins
-            if (member.getCoin() < item.getPrice()) {
+            // 멤버가 충분한 코인을 가지고 있는지 확인
+            int totalPrice = item.getPrice() * quantity;
+            if (member.getCoin() < totalPrice) {
                 throw new ShopException(ErrorCode.SHOP_INSUFFICIENT_COINS);
             }
 
-            // Deduct item price from member's coins
-            member.setCoin(member.getCoin() - item.getPrice());
+            // 가격만큼 멤버 코인 차감
+            member.setCoin(member.getCoin() - totalPrice);
 
-            // Add item to member's owned letters
+            // 멤버가 소유한 편지지 리스트에 추가하기
             CollectionReference ownedLettersRef = memberDocRef.collection("ownedLetter");
             DocumentReference ownedLetterDocRef = ownedLettersRef.document(item.getId());
-            ownedLetterDocRef.set(new OwnedLetter(item.getName(), item.getImageUrl(), 1, false));
+            DocumentSnapshot ownedLetterDoc = ownedLetterDocRef.get().get();
+            if (ownedLetterDoc.exists()) {
+                OwnedLetter ownedLetter = ownedLetterDoc.toObject(OwnedLetter.class);
+                ownedLetter.setCount(ownedLetter.getCount() + quantity);
+                ownedLetterDocRef.set(ownedLetter);
+            } else {
+                ownedLetterDocRef.set(new OwnedLetter(item.getName(), item.getImageUrl(), quantity, false));
+            }
 
-            // Update member's coin balance in Firestore
+            // 파이어스토어에 멤버의 코인 업데이트
             ApiFuture<WriteResult> writeResult = memberDocRef.set(member);
             writeResult.get();
         } catch (InterruptedException | ExecutionException e) {
