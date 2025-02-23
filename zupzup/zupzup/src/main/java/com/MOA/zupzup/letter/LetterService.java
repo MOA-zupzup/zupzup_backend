@@ -4,6 +4,7 @@ import com.MOA.zupzup.global.exception.ErrorCode;
 import com.MOA.zupzup.global.exception.LetterException;
 import com.MOA.zupzup.letter.dto.DroppingLetterRequest;
 import com.MOA.zupzup.letter.dto.LetterResponse;
+import com.MOA.zupzup.mailbox.MailboxService;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
@@ -26,6 +27,8 @@ public class LetterService {
 
     private static final String COLLECTION_NAME = "letters";
 
+    private final MailboxService mailboxService;
+
     private CollectionReference getLetterCollection() {
         Firestore db = FirestoreClient.getFirestore();
         return db.collection(COLLECTION_NAME);
@@ -34,7 +37,11 @@ public class LetterService {
     @Transactional
     public String createUnpickedLetter(DroppingLetterRequest request){
         Letter letter = request.toDropLetterEntity();
-        return createLetter(letter);
+
+        String letterId = createLetter(letter); // 편지를 Firestore에 저장 (편지 ID 생성)
+        mailboxService.addLetterToMailbox(request.getMailboxId(), letterId); // 우편함에 letterId 추가
+
+        return letterId; // 생성된 편지 ID 반환
     }
 
     public LetterResponse findLetter(String letterId)  {
@@ -52,6 +59,9 @@ public class LetterService {
         Letter letter = findLetterById(letterId);
         letter.pickUp(receiverId);
         updateLetter(letter);
+
+        // 우편함에서 편지 삭제
+        mailboxService.removeLetterFromMailbox(letter.getMailboxId(),letterId);
     }
 
     @Transactional

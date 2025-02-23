@@ -11,7 +11,8 @@ public record DroppingLetterRequest(
         GeoPoint location,
         String pictureUrl,
         String paperUrl,
-        String senderId
+        String senderId,
+        String mailboxId
 ) {
     public Letter toDropLetterEntity(){
         return Letter.builder()
@@ -23,6 +24,11 @@ public record DroppingLetterRequest(
                 .pictureUrl(pictureUrl)
                 .paperUrl(paperUrl)
                 .senderId(senderId)
+                .mailboxId(mailboxId)
                 .build();
+    }
+
+    public String getMailboxId(){
+        return mailboxId;
     }
 }
