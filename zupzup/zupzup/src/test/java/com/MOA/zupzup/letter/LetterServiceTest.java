@@ -3,7 +3,6 @@ package com.MOA.zupzup.letter;
 import com.MOA.zupzup.global.exception.LetterException;
 import com.MOA.zupzup.letter.dto.DroppingLetterRequest;
 import com.MOA.zupzup.letter.dto.LetterResponse;
-import com.MOA.zupzup.global.FirebaseConfig;
 import com.google.cloud.firestore.GeoPoint;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -21,7 +20,8 @@ public class LetterServiceTest {
 
     @Autowired
     private LetterService letterService;
-    private FirebaseConfig firebaseConfig;
+
+    private String savedLetterId;
 
     private DroppingLetterRequest createLetterRequest(){
         DroppingLetterRequest request = new DroppingLetterRequest(
@@ -30,7 +30,8 @@ public class LetterServiceTest {
                 new GeoPoint(37,126),
                 "testPictureUrl",
                 "testPaperUrl",
-                "testSenderId"
+                "testSenderId",
+                "test0"
         );
         return request;
     }
@@ -40,10 +41,10 @@ public class LetterServiceTest {
 
         DroppingLetterRequest request = createLetterRequest();
 
-        String savedId = letterService.createUnpickedLetter(request);
+        savedLetterId = letterService.createUnpickedLetter(request);
 
-        System.out.println("savedId = " + savedId);
-        LetterResponse response = letterService.findLetter(savedId);
+        System.out.println("savedId = " + savedLetterId);
+        LetterResponse response = letterService.findLetter(savedLetterId);
         System.out.println("letter is created at: " + response.createdAt());
         assertNotNull(String.valueOf(response.id()), "편지 찾을 수 없음");
     }
@@ -53,11 +54,11 @@ public class LetterServiceTest {
 
         DroppingLetterRequest request = createLetterRequest();
 
-        String savedId = letterService.createUnpickedLetter(request);
+        savedLetterId = letterService.createUnpickedLetter(request);
 
-        System.out.println("savedId = " + savedId);
-        letterService.pickUpLetter(savedId, "receiver");
-        LetterResponse response = letterService.findLetter(savedId);
+        System.out.println("savedId = " + savedLetterId);
+        letterService.pickUpLetter(savedLetterId, "receiver");
+        LetterResponse response = letterService.findLetter(savedLetterId);
         System.out.println("Receiver : " + response.receiverId());
         assertNotNull(String.valueOf(response.id()), "편지 찾을 수 없음");
     }
