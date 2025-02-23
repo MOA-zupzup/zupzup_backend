@@ -1,18 +1,21 @@
 package com.MOA.zupzup.shop.dto;
 
 import com.MOA.zupzup.shop.ShopLetterItem;
-import com.google.cloud.Timestamp;
+import lombok.Getter;
 
-public record ShopResponse(
-        String id,
-        String imageUrl,
-        int price
-) {
-    public static ShopResponse from(ShopLetterItem shopLetterItem) {
-        return new ShopResponse(
-                shopLetterItem.getId(),
-                shopLetterItem.getImageUrl(),
-                shopLetterItem.getPrice()
-        );
+@Getter
+public class ShopResponse {
+    private String id;
+    private String name;
+    private String imageUrl;
+    private int price;
+
+    public static ShopResponse from(ShopLetterItem item) {
+        ShopResponse response = new ShopResponse();
+        response.id = item.getId();
+        response.name = item.getName();
+        response.imageUrl = item.getImageUrl();
+        response.price = item.getPrice();
+        return response;
     }
 }

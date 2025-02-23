@@ -59,32 +59,6 @@ public class MemberService {
         return document.exists() ? document.getData() : null;
     }
 
-//    // 사용자가 소유한 편지지 추가
-//    public void addOwnedStationery(String userId, String stationeryId, Map<String, Object> stationeryData) throws ExecutionException, InterruptedException {
-//        Firestore db = FirestoreClient.getFirestore();
-//
-//        // 필수 필드가 있는지 확인하고 기본값 설정
-//        String imageUrl = (String) stationeryData.getOrDefault("imageUrl", "");
-//        String name = (String) stationeryData.getOrDefault("name", "");
-//        Boolean isBasic = (Boolean) stationeryData.getOrDefault("isBasic", false);
-//        int count = isBasic ? -1 : ((stationeryData.get("count") instanceof Number) ? ((Number) stationeryData.get("count")).intValue() : 0);
-//
-//        // Firestore에 저장할 데이터 생성
-//        Map<String, Object> data = Map.of(
-//                "imageUrl", imageUrl,
-//                "name", name,
-//                "isBasic", isBasic,
-//                "count", count
-//        );
-//
-//        DocumentReference stationeryRef = db.collection(COLLECTION_MEMBER)
-//                .document(userId)
-//                .collection("ownedLetter")
-//                .document(stationeryId);
-//
-//        stationeryRef.set(data).get();  // Firestore에 저장
-//    }
-
     // 사용자가 소유한 편지지 삭제
     public void deleteOwnedStationery(String userId, String stationeryId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();

@@ -47,26 +47,15 @@ public class ShopService {
         }
     }
 
-    public ShopLetterItem findShopItem(String itemId) {
+    public ShopLetterItem findShopItemByName(String name) {
         try {
-            DocumentReference docRef = getShopItemCollection().document(itemId);
-            ApiFuture<DocumentSnapshot> future = docRef.get();
-            DocumentSnapshot document = future.get();
-            return handleFirestoreResult(document, () -> new ShopException(ErrorCode.SHOP_ITEM_NOT_FOUND));
-        } catch (InterruptedException | ExecutionException e) {
-            throw new ShopException(ErrorCode.SHOP_ITEM_FIND_FAILED);
-        }
-    }
-
-    public ShopLetterItem findShopItemByIndex(int index) {
-        try {
-            ApiFuture<QuerySnapshot> future = getShopItemCollection().orderBy(FieldPath.documentId()).offset(index).limit(1).get();
-            QuerySnapshot querySnapshot = future.get();
-            if (querySnapshot.isEmpty()) {
+            Query query = getShopItemCollection().whereEqualTo("name", name);
+            ApiFuture<QuerySnapshot> future = query.get();
+            List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+            if (documents.isEmpty()) {
                 throw new ShopException(ErrorCode.SHOP_ITEM_NOT_FOUND);
             }
-            DocumentSnapshot document = querySnapshot.getDocuments().get(0);
-            return document.toObject(ShopLetterItem.class);
+            return documents.get(0).toObject(ShopLetterItem.class);
         } catch (InterruptedException | ExecutionException e) {
             throw new ShopException(ErrorCode.SHOP_ITEM_FIND_FAILED);
         }
@@ -85,9 +74,10 @@ public class ShopService {
     }
 
     @Transactional
-    public void updateShopItem(ShopLetterItem shopLetterItem) {
+    public void updateShopItemByName(ShopLetterItem shopLetterItem) {
         try {
-            DocumentReference docRef = getShopItemCollection().document(shopLetterItem.getId());
+            ShopLetterItem existingItem = findShopItemByName(shopLetterItem.getName());
+            DocumentReference docRef = getShopItemCollection().document(existingItem.getId());
             ApiFuture<WriteResult> result = docRef.set(shopLetterItem);
             result.get();
         } catch (InterruptedException | ExecutionException e) {
@@ -96,9 +86,10 @@ public class ShopService {
     }
 
     @Transactional
-    public void deleteShopItem(String itemId) {
+    public void deleteShopItemByName(String name) {
         try {
-            DocumentReference docRef = getShopItemCollection().document(itemId);
+            ShopLetterItem existingItem = findShopItemByName(name);
+            DocumentReference docRef = getShopItemCollection().document(existingItem.getId());
             ApiFuture<WriteResult> result = docRef.delete();
             result.get();
         } catch (InterruptedException | ExecutionException e) {
@@ -106,10 +97,8 @@ public class ShopService {
         }
     }
 
-    //-------- CRUD 이외 메서드 --------//
-
     @Transactional
-    public void purchaseShopItem(String memberId, int index) {
+    public void purchaseShopItemByName(String memberId, String name) {
         try {
             // Fetch member
             DocumentReference memberDocRef = getMemberCollection().document(memberId);
@@ -121,7 +110,7 @@ public class ShopService {
             Member member = memberDoc.toObject(Member.class);
 
             // Fetch shop item
-            ShopLetterItem item = findShopItemByIndex(index);
+            ShopLetterItem item = findShopItemByName(name);
 
             // Check if member has enough coins
             if (member.getCoin() < item.getPrice()) {
@@ -142,14 +131,5 @@ public class ShopService {
         } catch (InterruptedException | ExecutionException e) {
             throw new ShopException(ErrorCode.SHOP_ITEM_PURCHASE_FAILED);
         }
-    }
-
-    //=== Validation Methods ===//
-    private ShopLetterItem handleFirestoreResult(DocumentSnapshot documentSnapshot, Supplier<? extends RuntimeException> supplier) {
-        return documentSnapshot.exists() ? documentSnapshot.toObject(ShopLetterItem.class) : throwException(supplier);
-    }
-
-    private <T> T throwException(Supplier<? extends RuntimeException> exceptionSupplier) {
-        throw exceptionSupplier.get();
     }
 }
