@@ -157,7 +157,6 @@ public class MailboxService {
         return earthRadius * c;  // km 단위
     }
 
-    @Transactional
     public void addLetterToMailbox(String mailboxId, String letterId) {
         DocumentReference mailboxRef = getMailboxCollection().document(mailboxId);
 
@@ -169,22 +168,26 @@ public class MailboxService {
                 }
 
                 Mailbox mailbox = snapshot.toObject(Mailbox.class);
-                if (mailbox != null) {
-                    mailbox.addLetter(letterId);
-                    transaction.set(mailboxRef, mailbox);
-                } else {
+                if (mailbox == null) {
                     throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
                 }
+
+                // 이미 존재하는 letterId인지 확인
+                if (mailbox.getLetterIds().contains(letterId)) {
+                    throw new MailboxException(ErrorCode.LETTER_ALREADY_EXISTS);
+                }
+
+                mailbox.addLetter(letterId);  // letterId 추가 및 letterCount 증가
+                transaction.set(mailboxRef, mailbox);
                 return null;  // 트랜잭션 완료
-            }).get();
+            }).get(); // 트랜잭션 실행 및 완료
+
         } catch (InterruptedException | ExecutionException e) {
-            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED); // 예외 처리
+            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED);
         }
     }
 
-    //=== 편지 작성 시 우편함에 추가 ===//
 
-    @Transactional
     public void removeLetterFromMailbox(String mailboxId, String letterId) {
         DocumentReference mailboxRef = getMailboxCollection().document(mailboxId);
 
@@ -196,18 +199,25 @@ public class MailboxService {
                 }
 
                 Mailbox mailbox = snapshot.toObject(Mailbox.class);
-                if (mailbox != null) {
-                    mailbox.removeLetter(letterId);
-                    transaction.set(mailboxRef, mailbox);
-                } else {
+                if (mailbox == null) {
                     throw new MailboxException(ErrorCode.MAILBOX_NOT_FOUND);
                 }
+
+                // 삭제하려는 letterId가 존재하는지 확인
+                if (!mailbox.getLetterIds().contains(letterId)) {
+                    throw new MailboxException(ErrorCode.LETTER_NOT_FOUND);
+                }
+
+                mailbox.removeLetter(letterId);  // letterId 제거 및 letterCount 업데이트
+                transaction.set(mailboxRef, mailbox);
                 return null;  // 트랜잭션 완료
-            }).get();
+            }).get();  // 트랜잭션 실행 및 완료
+
         } catch (InterruptedException | ExecutionException e) {
-            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED); // 예외 처리
+            throw new MailboxException(ErrorCode.MAILBOX_UPDATE_FAILED);
         }
     }
+
 
     //=== 검증 메서드===//
     private Mailbox handleFirestoreResult(DocumentSnapshot documentSnapshot, Supplier<? extends RuntimeException> supplier){

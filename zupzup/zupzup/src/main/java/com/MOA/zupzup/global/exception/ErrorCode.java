@@ -24,7 +24,6 @@ public enum ErrorCode {
     MAILBOX_UPDATE_FAILED(HttpStatus.BAD_REQUEST, "우편함 업데이트에 실패했습니다."),
     MAILBOX_DELETE_FAILED(HttpStatus.BAD_REQUEST, "우편함 삭제에 실패했습니다."),
     MAILBOX_ID_MISMATCH(HttpStatus.BAD_REQUEST, "경로 변수의 ID와 요청 본문의 ID가 일치하지 않습니다."),
-    MAILBOX_ID_REQUIRED(HttpStatus.BAD_REQUEST, "우편함 ID는 필수 값입니다."),
     NO_MAILBOXES_FOUND(HttpStatus.NOT_FOUND, "등록된 우편함이 존재하지 않습니다."),
     INVALID_USER_LOCATION(HttpStatus.BAD_REQUEST, "잘못된 사용자 위치 데이터입니다."),
     INVALID_MAILBOX_LOCATION(HttpStatus.BAD_REQUEST, "잘못된 우편함 위치 데이터입니다."),

@@ -19,7 +19,7 @@ public class MailboxServiceTest {
     @Autowired
     private MailboxService mailboxService;
 
-    private static final String TEST_MAILBOX_ID = "testMailbox";
+    private static final String TEST_MAILBOX_ID = "testMailbox1";
     private static final String TEST_LETTER_ID = "testLetter";
 
     @BeforeEach

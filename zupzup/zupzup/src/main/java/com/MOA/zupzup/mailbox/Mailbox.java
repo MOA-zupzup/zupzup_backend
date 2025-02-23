@@ -19,8 +19,8 @@ public class Mailbox {
     private int letterCount;
 
     public void addLetter(String letterId){
-        this.letterIds.add(letterId);
-        this.letterCount = this.letterIds.size();
+        letterIds.add(letterId);
+        letterCount = letterIds.size();
     }
 
     public void removeLetter(String letterId){
