@@ -4,6 +4,7 @@ import com.MOA.zupzup.letter.Letter;
 import com.MOA.zupzup.letter.vo.LetterStatus;
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.GeoPoint;
+import lombok.Getter;
 
 public record DroppingLetterRequest(
         String title,
@@ -11,7 +12,8 @@ public record DroppingLetterRequest(
         GeoPoint location,
         String pictureUrl,
         String paperUrl,
-        String senderId
+        String senderId,
+        String stationeryId
 ) {
     public Letter toDropLetterEntity(){
         return Letter.builder()
@@ -23,6 +25,7 @@ public record DroppingLetterRequest(
                 .pictureUrl(pictureUrl)
                 .paperUrl(paperUrl)
                 .senderId(senderId)
+                .stationeryId(stationeryId)
                 .build();
     }
 }

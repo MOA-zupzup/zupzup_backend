@@ -4,6 +4,8 @@ import com.MOA.zupzup.exception.ErrorCode;
 import com.MOA.zupzup.exception.LetterException;
 import com.MOA.zupzup.letter.dto.DroppingLetterRequest;
 import com.MOA.zupzup.letter.dto.LetterResponse;
+import com.MOA.zupzup.member.MemberService;
+import com.MOA.zupzup.member.OwnedLetter;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
@@ -26,15 +29,17 @@ public class LetterService {
 
     private static final String COLLECTION_NAME = "letters";
 
+    private final MemberService memberService;
+
     private CollectionReference getLetterCollection() {
         Firestore db = FirestoreClient.getFirestore();
         return db.collection(COLLECTION_NAME);
     }
 
     @Transactional
-    public String createUnpickedLetter(DroppingLetterRequest request){
+    public String createUnpickedLetter(DroppingLetterRequest request) throws ExecutionException, InterruptedException {
         Letter letter = request.toDropLetterEntity();
-        return createLetter(letter);
+        return createLetter(letter, request.toDropLetterEntity().getSenderId(), request.toDropLetterEntity().getStationeryId());
     }
 
     public LetterResponse findLetter(String letterId)  {
@@ -62,12 +67,15 @@ public class LetterService {
 
 
     //=== firestore CRUD 메서드 ===//
-    private String createLetter(Letter letter) {
+    private String createLetter(Letter letter, String senderId, String stationeryId) {
         try {
+            String imageUrl = memberService.getOwnedStationeryImageUrl(senderId, stationeryId);
+            letter.setPaperUrl(imageUrl);  // paperUrl에 imageUrl 설정
             DocumentReference docRef = getLetterCollection().document();
             letter.setId(docRef.getId());
             ApiFuture<WriteResult> letterApiFuture = docRef.set(letter);
             letterApiFuture.get();
+            System.out.println("Saved letter paperUrl: " + letter.getPaperUrl());
             return docRef.getId();
         } catch (InterruptedException | ExecutionException e) {
             throw new LetterException(ErrorCode.LETTER_CREATE_FAILED);

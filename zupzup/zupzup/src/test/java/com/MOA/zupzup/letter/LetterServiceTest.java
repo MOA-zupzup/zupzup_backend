@@ -28,7 +28,8 @@ public class LetterServiceTest {
                 new GeoPoint(37,126),
                 "testPictureUrl",
                 "testPaperUrl",
-                "testSenderId"
+                "userId",
+                "MfcLzO9E4me4jePCeDOv"
         );
         return request;
     }
@@ -47,7 +48,7 @@ public class LetterServiceTest {
     }
 
     @Test
-    void 편지_줍기_성공() {
+    void 편지_줍기_성공() throws ExecutionException, InterruptedException {
 
         DroppingLetterRequest request = createLetterRequest();
 

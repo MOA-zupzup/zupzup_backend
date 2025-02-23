@@ -6,6 +6,7 @@ import com.google.cloud.firestore.GeoPoint;
 import lombok.*;
 
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Letter {
@@ -19,8 +20,9 @@ public class Letter {
     private String paperUrl; // 편지지 url
     private String senderId; // 남긴 사람
     private String receiverId; // 받은 사람
+    private String stationeryId; // 편지지 id
 
-    public Letter(String id, String title, String content, GeoPoint location, Timestamp createdAt, String status, String pictureUrl, String paperUrl, String senderId, String receiverId) {
+    public Letter(String id, String title, String content, GeoPoint location, Timestamp createdAt, String status, String pictureUrl, String paperUrl, String senderId, String receiverId, String stationeryId) {
         this.id = id;
         this.title = title;
         this.content = content;
@@ -31,6 +33,7 @@ public class Letter {
         this.paperUrl = paperUrl;
         this.senderId = senderId;
         this.receiverId = receiverId;
+        this.stationeryId = stationeryId;
     }
 
     public void setId(String id) {

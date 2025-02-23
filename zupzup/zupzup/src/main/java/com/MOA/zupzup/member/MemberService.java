@@ -66,6 +66,26 @@ public class MemberService {
         return null;
     }
 
+    // 사용자가 소유한 특정 편지지의 imageUrl만 가져오기
+    public String getOwnedStationeryImageUrl(String userId, String stationeryId) throws ExecutionException, InterruptedException {
+        Firestore db = FirestoreClient.getFirestore();
+
+        DocumentReference stationeryRef = db.collection(COLLECTION_MEMBER)
+                .document(userId)
+                .collection("ownedLetter")
+                .document(stationeryId);
+
+        DocumentSnapshot document = stationeryRef.get().get();
+        if (document.exists()) {
+            Long count = document.getLong("count");
+            if (count != null && count == 0) {
+                throw new IllegalStateException("해당 편지지를 가지고 있지 않습니다");
+            }
+            return document.getString("imageUrl");
+        }
+        return null;
+    }
+
     // 사용자가 소유한 편지지 삭제
     public void deleteOwnedStationery(String userId, String stationeryId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
