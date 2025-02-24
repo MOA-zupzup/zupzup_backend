@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,9 +23,9 @@ public class LetterController {
 
     @PostMapping("/new")
     @Operation(summary = "편지 남기기", description = "새로운 편지를 생성합니다.")
-    public ResponseEntity<Void> createLetter(@RequestBody DroppingLetterRequest request) {
+    public ResponseEntity<Void> createLetter(@RequestBody DroppingLetterRequest request) throws ExecutionException, InterruptedException {
         String letterId = letterService.createUnpickedLetter(request);
-        return ResponseEntity.created(URI.create("/letters" + letterId)).build();
+        return ResponseEntity.created(URI.create("/letters/" + letterId)).build();
     }
 
     @PutMapping("/{letterId}/pick")

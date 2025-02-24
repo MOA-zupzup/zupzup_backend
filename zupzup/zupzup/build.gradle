@@ -24,6 +24,8 @@ dependencies {
 
 	// firebase
 	implementation 'com.google.firebase:firebase-admin:9.1.1'
+	implementation 'com.google.cloud:google-cloud-firestore'
+
 
 	// lombok
 	implementation 'org.projectlombok:lombok:1.18.28'
