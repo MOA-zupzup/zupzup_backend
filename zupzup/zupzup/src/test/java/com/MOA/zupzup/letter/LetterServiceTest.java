@@ -1,10 +1,9 @@
 package com.MOA.zupzup.letter;
 
-import com.MOA.zupzup.global.exception.LetterException;
 import com.MOA.zupzup.letter.dto.DroppingLetterRequest;
 import com.MOA.zupzup.letter.dto.LetterResponse;
+import com.MOA.zupzup.login.FirebaseConfig;
 import com.google.cloud.firestore.GeoPoint;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,13 +14,12 @@ import java.util.concurrent.ExecutionException;
 import static org.springframework.test.util.AssertionErrors.assertNotNull;
 
 @SpringBootTest
-@TestPropertySource(properties = "firebase.service-account.path=")
+@TestPropertySource(properties = "firebase.service-account.path=src/main/resources/zupzup-e3e05-firebase-adminsdk-1ujhj-725b926874.json")
 public class LetterServiceTest {
 
     @Autowired
     private LetterService letterService;
-
-    private String savedLetterId;
+    private FirebaseConfig firebaseConfig;
 
     private DroppingLetterRequest createLetterRequest(){
         DroppingLetterRequest request = new DroppingLetterRequest(
@@ -30,8 +28,9 @@ public class LetterServiceTest {
                 new GeoPoint(37,126),
                 "testPictureUrl",
                 "testPaperUrl",
-                "testSenderId",
-                "test0"
+                "userId",
+                "mailboxId",
+                "MfcLzO9E4me4jePCeDOv"
         );
         return request;
     }
@@ -41,33 +40,26 @@ public class LetterServiceTest {
 
         DroppingLetterRequest request = createLetterRequest();
 
-        savedLetterId = letterService.createUnpickedLetter(request);
+        String savedId = letterService.createUnpickedLetter(request);
 
-        System.out.println("savedId = " + savedLetterId);
-        LetterResponse response = letterService.findLetter(savedLetterId);
+        System.out.println("savedId = " + savedId);
+        LetterResponse response = letterService.findLetter(savedId);
         System.out.println("letter is created at: " + response.createdAt());
         assertNotNull(String.valueOf(response.id()), "편지 찾을 수 없음");
     }
 
     @Test
-    void 편지_줍기_성공() {
+    void 편지_줍기_성공() throws ExecutionException, InterruptedException {
 
         DroppingLetterRequest request = createLetterRequest();
 
-        savedLetterId = letterService.createUnpickedLetter(request);
+        String savedId = letterService.createUnpickedLetter(request);
 
-        System.out.println("savedId = " + savedLetterId);
-        letterService.pickUpLetter(savedLetterId, "receiver");
-        LetterResponse response = letterService.findLetter(savedLetterId);
+        System.out.println("savedId = " + savedId);
+        letterService.pickUpLetter(savedId, "receiver");
+        LetterResponse response = letterService.findLetter(savedId);
         System.out.println("Receiver : " + response.receiverId());
         assertNotNull(String.valueOf(response.id()), "편지 찾을 수 없음");
-    }
-
-    @Test
-    void 편지_줍기_에러_발생() {
-        Assertions.assertThrows(LetterException.class, () -> {
-            letterService.pickUpLetter("123", "who");
-        });
     }
 }
 

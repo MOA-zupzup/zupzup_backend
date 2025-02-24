@@ -5,6 +5,8 @@ import com.MOA.zupzup.global.exception.LetterException;
 import com.MOA.zupzup.letter.dto.DroppingLetterRequest;
 import com.MOA.zupzup.letter.dto.LetterResponse;
 import com.MOA.zupzup.mailbox.MailboxService;
+import com.MOA.zupzup.member.MemberService;
+import com.MOA.zupzup.member.OwnedLetter;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
@@ -29,6 +32,8 @@ public class LetterService {
 
     private final MailboxService mailboxService;
 
+    private final MemberService memberService;
+
     private CollectionReference getLetterCollection() {
         Firestore db = FirestoreClient.getFirestore();
         return db.collection(COLLECTION_NAME);
@@ -38,7 +43,7 @@ public class LetterService {
     public String createUnpickedLetter(DroppingLetterRequest request){
         Letter letter = request.toDropLetterEntity();
 
-        String letterId = createLetter(letter); // 편지를 Firestore에 저장 (편지 ID 생성)
+        String letterId = createLetter(letter, request.toDropLetterEntity().getSenderId(), request.toDropLetterEntity().getStationeryId()); // 편지를 Firestore에 저장 (편지 ID 생성)
         mailboxService.addLetterToMailbox(request.getMailboxId(), letterId); // 우편함에 letterId 추가
 
         return letterId; // 생성된 편지 ID 반환
@@ -72,8 +77,15 @@ public class LetterService {
 
 
     //=== firestore CRUD 메서드 ===//
-    private String createLetter(Letter letter) {
+    private String createLetter(Letter letter, String senderId, String stationeryId) {
         try {
+            String imageUrl = memberService.getOwnedStationeryImageUrl(senderId, stationeryId);
+            letter.setPaperUrl(imageUrl);  // paperUrl에 imageUrl 설정
+
+            // 편지지 수량 감소
+            boolean updated = memberService.updateStationeryCount(senderId, stationeryId, memberService.setStationeryCount(senderId, stationeryId) - 1);
+            System.out.println("업데이트된 편지 수량: " + memberService.setStationeryCount(senderId, stationeryId));
+
             DocumentReference docRef = getLetterCollection().document();
             letter.setId(docRef.getId());
             ApiFuture<WriteResult> letterApiFuture = docRef.set(letter);
